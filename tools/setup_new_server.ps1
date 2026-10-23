@@ -6,7 +6,7 @@
 #   2. Detects the LAN IP
 #   3. Configures config.json (work_lan_ip + real api_token auto-gen)
 #   4. Generates userscripts (local + colleagues)
-#   5. Opens firewall port 1205
+#   5. Opens the configured firewall port (default 1205)
 #   6. Sets power policy (sleep = never, so the service stays up)
 #   7. Starts the OCR service
 #   8. Verifies health and prints summary
@@ -194,19 +194,20 @@ if (Test-Path $userscriptPath) {
 Write-Host ""
 
 if ($isAdmin) {
-    $existingRule = Get-NetFirewallRule -DisplayName "OCR Service (1205)" -ErrorAction SilentlyContinue
+    $ruleName = "OCR Service ($port)"
+    $existingRule = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
     if ($existingRule) {
-        Write-Host "      Firewall rule 'OCR Service (1205)' already exists." -ForegroundColor Green
+        Write-Host "      Firewall rule '$ruleName' already exists." -ForegroundColor Green
     } else {
-        New-NetFirewallRule -DisplayName "OCR Service (1205)" `
-            -Direction Inbound -Protocol TCP -LocalPort 1205 -Action Allow `
+        New-NetFirewallRule -DisplayName $ruleName `
+            -Direction Inbound -Protocol TCP -LocalPort $port -Action Allow `
             -Profile Any | Out-Null
-        Write-Host "      Created firewall rule: OCR Service (1205) - TCP Inbound" -ForegroundColor Green
+        Write-Host "      Created firewall rule: $ruleName - TCP Inbound" -ForegroundColor Green
     }
 } else {
     Write-Host "      [WARNING] Not running as admin - skipping firewall rule." -ForegroundColor Yellow
-    Write-Host "      Either re-run as admin, or manually allow port 1205:" -ForegroundColor Yellow
-    Write-Host "        netsh advfirewall firewall add rule name=""OCR Service (1205)"" dir=in action=allow protocol=TCP localport=1205" -ForegroundColor Yellow
+    Write-Host "      Either re-run as admin, or manually allow port $port`:" -ForegroundColor Yellow
+    Write-Host "        netsh advfirewall firewall add rule name=""OCR Service ($port)"" dir=in action=allow protocol=TCP localport=$port" -ForegroundColor Yellow
 }
 
 # --- Step 6: Power settings ----------------------------------------------------
@@ -242,11 +243,11 @@ if ($isAdmin) {
 Write-Host ""
 Write-Host "[7/8] Starting OCR service..." -ForegroundColor Cyan
 
-# Kill any existing python that might hold port 1205
-$portOwner = Get-NetTCPConnection -LocalPort 1205 -State Listen -ErrorAction SilentlyContinue |
+# Kill any existing python that might hold the configured port
+$portOwner = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
     Select-Object -First 1 -ExpandProperty OwningProcess
 if ($portOwner) {
-    Write-Host "      Port 1205 is in use by PID $portOwner, stopping it..."
+    Write-Host "      Port $port is in use by PID $portOwner, stopping it..."
     try {
         Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = $portOwner" |
             Invoke-CimMethod -MethodName Terminate 2>&1 | Out-Null
@@ -320,13 +321,13 @@ Write-Host ""
 if (-not $isAdmin) {
     Write-Host "  [IMPORTANT] Re-run this script as Administrator to configure" -ForegroundColor Red
     Write-Host "  firewall and power settings, or do them manually:" -ForegroundColor Red
-    Write-Host "    netsh advfirewall firewall add rule name=""OCR Service (1205)"" dir=in action=allow protocol=TCP localport=1205" -ForegroundColor Red
+    Write-Host "    netsh advfirewall firewall add rule name=""OCR Service ($port)"" dir=in action=allow protocol=TCP localport=$port" -ForegroundColor Red
     Write-Host "    powercfg /change standby-timeout-ac 0" -ForegroundColor Red
     Write-Host "    powercfg /change hibernate-timeout-ac 0" -ForegroundColor Red
     Write-Host ""
 }
 
 Write-Host "  To stop the service: double-click Stop-OCR.bat (or use the command below)" -ForegroundColor DarkGray
-Write-Host "    Get-NetTCPConnection -LocalPort 1205 -State Listen | ForEach-Object { Stop-Process -Id `$_.OwningProcess -Force }" -ForegroundColor DarkGray
+Write-Host "    Get-NetTCPConnection -LocalPort $port -State Listen | ForEach-Object { Stop-Process -Id `$_.OwningProcess -Force }" -ForegroundColor DarkGray
 Write-Host "  To restart: powershell -File tools\restart_server.ps1" -ForegroundColor DarkGray
 Write-Host ""

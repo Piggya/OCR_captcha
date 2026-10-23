@@ -36,6 +36,8 @@ FastAPI (uvicorn :1205)
 3. 把窗口显示（已复制到剪贴板）的 `http://<本机IP>:1205/userscript.user.js` 发给同事
 4. 同事装 Tampermonkey 后打开该地址安装，**无需填 URL/token**
 
+> 局域网其他电脑不需要下载便携包或安装 Python，只要能访问服务器的 1205 端口，并有 Tampermonkey 即可。
+>
 > 资产尚未发布时，请到 [Releases](https://github.com/Piggya/OCR_captcha/releases) 下载对应版本。
 
 ## 从源码部署（开发/服务器）
@@ -67,6 +69,22 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 
 在已配置好的机器上运行 `tools/build_portable.ps1` 生成 `OCR-portable.zip`，拷到新机器解压后**双击 `Start-OCR.bat`** 即可（自动提权、生成 token、开防火墙、后台启动）。详见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
+## 更新
+
+**服务端**
+- 能访问 GitHub：双击 `Update-OCR.bat`（自动提权）。它会下载最新源码，保留 `server/config.json` 和 `python/`，更新前备份到 `backup-时间戳/`，更新后自动重启。
+- 内网无法访问 GitHub：在能上网的机器下载 [源码 zip](https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip)，拷过来后以管理员运行：
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File tools\update_ocr.ps1 -SourceZip "C:\path\main.zip"
+  ```
+- **不要删 `server/config.json`**，否则会生成新 token。
+- 从 0.9.1 及更早版本升级：旧包没有 `Update-OCR.bat`，需把新版里的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制进去，或解压完整新包后复制旧 `server/config.json`。
+
+**同事脚本**
+- 内网安装：Tampermonkey 管理面板 →「检查用户脚本更新」（`@updateURL` 指向服务器），或脚本菜单「从服务器更新脚本（内网）」。
+- GitHub 安装：从 GitHub 更新；建议重开一次内网脚本地址并点“更新”，之后切换到服务器托管更新。
+- 轮换 token：升一次 `@version`，客户端自动拉取；否则让同事重开内网地址安装一次。
+
 ## 安装油猴脚本
 
 1. 浏览器安装 [Tampermonkey](https://www.tampermonkey.net/)
@@ -89,6 +107,8 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 脚本头已指向本仓库。发布后，`@version` 变大时 Tampermonkey 会自动拉取（也可手动“检查用户脚本更新”）。
 
 **隔离内网**（无法访问 GitHub）：服务端同样托管了脚本，菜单「**从服务器更新脚本（内网）**」会打开 `http://<服务器IP>:1205/userscript.user.js`，由 Tampermonkey 完成更新。服务端返回的脚本会把 `@updateURL` / `@downloadURL` 改成自身地址，并重新注入当前 token，所以内网更新也能自动同步 token。
+
+**公开发布（GreasyFork）**：可把无 token 的公开脚本发布到 GreasyFork，方便搜索“内网验证码 OCR”。发布文案、分类、隐私说明见 [docs/GREASYFORK.md](docs/GREASYFORK.md)。服务端仍需用户自行部署；内网同事仍建议用服务器注入地址。
 
 ## API
 
@@ -120,6 +140,7 @@ install.ps1     首次安装（建 venv + 依赖）
 start_server.ps1 生成配置并启动服务
 Start-OCR.bat   便携版一键启动（自动提权）
 Stop-OCR.bat    便携版一键停止
+Update-OCR.bat  便携版一键更新（保留 config/python）
 README-FIRST.txt 便携版给使用者的说明
 ```
 

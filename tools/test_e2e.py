@@ -100,6 +100,25 @@ def main():
         True,
     )
 
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    updater_ok = (
+        os.path.isfile(os.path.join(root, "Update-OCR.bat"))
+        and os.path.isfile(os.path.join(root, "tools", "update_ocr.ps1"))
+    )
+    check("portable updater present", updater_ok, True)
+    metadata_ok = all(tag in repo_text for tag in (
+        "// @license      MIT",
+        "// @homepageURL  https://github.com/Piggya/OCR_captcha",
+        "// @supportURL   https://github.com/Piggya/OCR_captcha/issues",
+        "// @source       https://github.com/Piggya/OCR_captcha",
+        "// @description:zh-CN",
+    ))
+    check("GreasyFork metadata present", metadata_ok, True)
+    app_text = open(os.path.join(root, "server", "app.py"), "r", encoding="utf-8").read()
+    app_version = app_text.split('__version__ = "', 1)[1].split('"', 1)[0]
+    us_version = repo_text.split("// @version", 1)[1].split("\n", 1)[0].strip()
+    check("server/userscript version sync", (app_version, us_version), (app_version, app_version))
+
     s, b = call("/recognize", {"image": PNG_B64, "kind": "text"})
     check("auth: no token -> 401", s, 401, b)
     s, b = call("/recognize", {"image": PNG_B64, "kind": "text"}, {"X-API-Token": "wrong"})

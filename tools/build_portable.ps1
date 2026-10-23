@@ -215,6 +215,7 @@ $includeItems = @(
     "start_server.bat",
     "Start-OCR.bat",
     "Stop-OCR.bat",
+    "Update-OCR.bat",
     "README-FIRST.txt",
     "install.ps1",
     "requirements.txt",
@@ -231,6 +232,7 @@ $excludePatterns = @(
     "server.log",
     "server.err.log",
     "config.json",
+    "TEST-REPORT-*.md",
 
     "result*.png",
     "edge-profile"
@@ -250,7 +252,7 @@ foreach ($item in $includeItems) {
     $dst = Join-Path $staging $item
     if (Test-Path $src -PathType Container) {
         # Copy directory with exclusion
-        robocopy $src $dst /E /XD __pycache__ debug-images edge-profile /XF *.pyc server.log server.err.log config.json result*.png /NFL /NDL /NJH /NJS /NC /NS /NP | Out-Null
+        robocopy $src $dst /E /XD __pycache__ debug-images edge-profile /XF *.pyc server.log server.err.log config.json TEST-REPORT-*.md result*.png /NFL /NDL /NJH /NJS /NC /NS /NP | Out-Null
     } else {
         Copy-Item -LiteralPath $src -Destination $dst -Force
     }

@@ -1,5 +1,13 @@
 # 开发日志
 
+## 0.9.2 (2026-10-23)
+- **一键更新**：新增 `Update-OCR.bat` + `tools/update_ocr.ps1`。默认从 GitHub 下载最新源码，停止服务 → 备份 `server/config.json`、`server/`、`userscript/` 到 `backup-时间戳/` → 替换代码（**保留 `server/config.json` 和 `python/`**）→ 依赖变化时自动 `pip install` → 重启服务。内网无法访问 GitHub 时可用 `-SourceZip` 指定离线源码包。
+- **局域网分发**：明确其他设备只需 Tampermonkey + 打开 `http://<服务器IP>:1205/userscript.user.js`，无需下载便携包；服务端自动注入 URL/token。
+- **油猴更新**：内网安装的脚本 `@updateURL` 指向服务器，可直接使用油猴“检查用户脚本更新”；GitHub 安装的脚本继续从 GitHub 更新，建议老用户重开一次内网地址切换到服务器托管更新。
+- **GreasyFork 准备**：油猴头新增 `@license`、`@homepageURL`、`@supportURL`、`@source`、`@description:zh-CN`；新增 `docs/GREASYFORK.md`（可直接粘贴的发布文案与注意事项）。
+- **构建**：便携包加入 `Update-OCR.bat`；`.gitignore` 忽略更新备份目录。
+- **修复**：`setup_new_server.ps1` 停止服务、防火墙规则和提示改用配置端口，不再硬编码 1205（便于测试/自定义端口）。
+
 ## 0.9.1 (2026-10-23)
 - **免手动配置**：`GET /userscript.user.js` 现在把当前服务器地址和 token 注入 `INJECTED_CONFIG`，并把 `@updateURL` / `@downloadURL` 指向服务器本身。同事从内网地址安装脚本后无需再填 URL/token；注入值优先于本地存储，轮换 token 后升版本即可自动下发。
 - **安全**：该端点只对 `allowed_clients` 中的 IP 返回，并带 `Cache-Control: no-store`；公开 GitHub 脚本仍保持 `INJECTED_CONFIG = null`、无 token。

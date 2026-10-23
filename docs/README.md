@@ -1,4 +1,4 @@
-# 土著内网验证码识别 v0.9.1
+# 土著内网验证码识别 v0.9.2
 
 公司内网用的纯本地验证码识别 + 自动填充方案。基于 FastAPI + ddddocr + Tampermonkey。
 
@@ -31,13 +31,16 @@ D:\OCR
 ├─ tools/                   # 工具脚本
 │  ├─ build_portable.ps1    # 构建便携包
 │  ├─ setup_new_server.ps1  # 新设备一键部署
+│  ├─ update_ocr.ps1        # 便携版原地更新（保留 config/python）
 │  └─ restart_server.ps1    # 重启服务
 ├─ docs/                    # 文档
 │  ├─ README.md             # 本文档 - 系统介绍
 │  ├─ DEPLOY.md             # 部署迁移指南
+│  ├─ GREASYFORK.md         # GreasyFork 发布文案
 │  └─ CHANGELOG.md          # 开发日志
 ├─ Start-OCR.bat            # 便携版一键启动（自动提权）
 ├─ Stop-OCR.bat             # 便携版一键停止
+├─ Update-OCR.bat           # 便携版一键更新（自动提权）
 ├─ README-FIRST.txt         # 便携版给使用者的说明
 ├─ start_server.ps1         # 启动脚本（开发环境用）
 └─ requirements.txt         # Python 依赖
@@ -68,6 +71,24 @@ D:\OCR
 3. 把窗口里显示（且已复制到剪贴板）的
    `http://<服务器IP>:1205/userscript.user.js` 发给同事
 4. 同事装好 Tampermonkey 后打开该地址安装即可，**无需填写 URL/token**
+
+> 局域网其他电脑**不需要**下载 zip 或安装 Python，只需能访问服务器的 1205 端口 + Tampermonkey。
+
+### 更新
+
+**服务端**
+- 能访问 GitHub：双击 `Update-OCR.bat`（自动提权）。保留 `server/config.json` 和 `python/`，更新前备份到 `backup-<时间戳>/`。
+- 内网离线：下载 [main.zip](https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip)，拷贝后运行
+  `powershell -File tools\update_ocr.ps1 -SourceZip "C:\path\main.zip"`。
+- 不要删除 `server/config.json`，否则 token 会重新生成。
+- 从 0.9.1 及更早版本升级：旧包没有 `Update-OCR.bat`，需把新版里的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制进去，或解压完整新包后复制旧 `server/config.json`。
+
+**同事脚本**
+- 内网安装：Tampermonkey 管理面板 →「检查用户脚本更新」，或菜单「从服务器更新脚本（内网）」。
+- GitHub/GreasyFork 安装：按各自渠道更新；建议重开一次内网地址切换到服务器托管更新。
+- 轮换 token 后升一次 `@version`。
+
+**公开发布**：GreasyFork 文案与步骤见 [GREASYFORK.md](GREASYFORK.md)。只能发布无 token 的公开脚本，服务端仍需用户自行部署。
 
 ### 开发环境
 **前提**：Windows 10/11 + PowerShell 5.1+ + Python 3.10+
@@ -166,8 +187,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ### 安装步骤
 
 1. 安装 Tampermonkey 扩展（Edge / Chrome / Firefox 应用商店搜索）
-2. 打开油猴管理面板 → 实用工具 → 从文件导入 → 选择 `.user.js` 文件
-3. 打开公司 OA 登录页，右下角自动弹出识别状态
+2. **推荐**：直接打开 `http://<服务器IP>:1205/userscript.user.js` 安装（自动注入 URL/token）
+3. 或打开油猴管理面板 → 实用工具 → 从文件导入 → 选择 `.user.js` 文件（需手动配置）
+4. 打开公司 OA 登录页，右下角自动弹出识别状态
 
 ### 识别结果标签
 
@@ -192,7 +214,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 - **查看当前服务器**：显示当前 Server URL
 - **从服务器更新脚本（内网）**：隔离内网时从 `http://<服务器IP>:1205/userscript.user.js` 更新
 
-> 脚本不含 token。能上外网时按 `@updateURL` 自动更新；隔离内网用上面的菜单更新。
+> 公开脚本不含 token。从内网地址安装时，服务端会把 `@updateURL` 指向服务器并注入 URL/token；从 GitHub/GreasyFork 安装时按各自渠道更新。轮换 token 后请升一次 `@version`。
 
 ### 验证码规则字段
 

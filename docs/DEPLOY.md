@@ -117,6 +117,17 @@ powercfg /change hibernate-timeout-ac 0
 > 内网脚本地址包含 token，只对 `allowed_clients` 中的 IP 返回，不要发到公网。
 > 更新方式：能上外网时脚本按 `@updateURL` 自动更新；隔离内网用菜单「从服务器更新脚本（内网）」。
 
+### 局域网其他电脑（不装服务端）
+
+其他电脑**不需要**解压 `OCR-portable.zip`，也**不需要** Python。只需：
+
+1. 能访问服务器的 1205 端口（同一内网；防火墙已由服务器端放行）
+2. 浏览器安装 Tampermonkey
+3. 打开 `http://<服务器IP>:1205/userscript.user.js` 并安装
+
+安装后 Tampermonkey 的更新地址会指向该服务器；服务器升级 `@version` 后即可检查更新。
+如果同事之前从公开 GitHub 安装，建议重开一次内网地址并点“更新”，切换到服务器托管更新。
+
 ---
 
 ## 阶段五：验证
@@ -209,11 +220,37 @@ Get-Content D:\OCR\server.err.log -Tail 20
 
 ---
 
+## 更新服务端
+
+**能访问 GitHub**：双击 `Update-OCR.bat`（自动提权）。
+
+更新流程：下载最新源码 → 停止 1205 服务 → 备份 `server/config.json`、`server/`、`userscript/` 到 `backup-<时间戳>/` → 替换代码（**保留 `server/config.json` 和 `python/`**）→ 依赖有变化时 `pip install` → 调用 `setup_new_server.ps1 -NonInteractive` 重启并健康检查。
+
+**内网无法访问 GitHub**：在能上网的机器下载
+`https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip`，
+拷到服务器后以管理员运行：
+
+```powershell
+cd D:\OCR
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\update_ocr.ps1 -SourceZip "C:\path\main.zip"
+```
+
+可选参数：`-Force`（同版本也重装）、`-SkipDependencies`（跳过 pip）、`-InstallRoot`（指定安装目录）。
+
+> 从 0.9.1 及更早版本升级时，旧目录里还没有 `Update-OCR.bat`：把新版中的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制到旧目录后再双击；或解压完整新包，把旧 `server\config.json` 复制过去。
+
+> 不要删 `server/config.json`，否则会生成新 token，所有同事都会 401。
+> 更新后同事脚本按 `@version` 自动更新；轮换 token 时必须升一次 `@version`，或让同事重开内网脚本地址安装。
+
+---
+
 ## 日常运维
 
 | 操作 | 命令 |
 |------|------|
 | 首次部署（一键） | 双击 `Start-OCR.bat` |
+| 更新服务端（一键，保留 config/python） | 双击 `Update-OCR.bat` |
+| 离线更新 | `powershell -File tools\update_ocr.ps1 -SourceZip "C:\path\main.zip"` |
 | 重启服务 | 双击 `Start-OCR.bat` 或 `powershell -File tools\restart_server.ps1` |
 | 停止服务 | 双击 `Stop-OCR.bat` |
 | 检查健康 | 浏览器打开 `http://127.0.0.1:1205/health` |

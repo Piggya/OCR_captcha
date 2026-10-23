@@ -12,6 +12,8 @@ __pycache__/
 # Service runtime artifacts
 server.log
 server.err.log
+# Update-OCR.bat backups (contain server/config.json)
+backup-*/
 # contains real api_token - never commit
 server/config.json
 
