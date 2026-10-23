@@ -76,6 +76,30 @@ def main():
     print("=" * 60)
     s, b = call("/health")
     check("health 200", s, 200, b)
+
+    # 0.9.1: the LAN endpoint must embed the current URL + token, while the
+    # repository copy must stay token-free (never print b here: it has a token).
+    s, b = call("/userscript.user.js")
+    injected = (
+        s == 200
+        and "const INJECTED_CONFIG = {" in b
+        and f'"serverUrl": "{BASE}"' in b
+        and f'"token": "{token}"' in b
+        and f"// @updateURL    {BASE}/userscript.user.js" in b
+    )
+    check("userscript injects URL + token (LAN)", injected, True)
+    repo_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "userscript",
+        "local-captcha-autofill.user.js",
+    )
+    repo_text = open(repo_path, "r", encoding="utf-8").read()
+    check(
+        "repo userscript stays token-free",
+        "const INJECTED_CONFIG = null;" in repo_text and token not in repo_text,
+        True,
+    )
+
     s, b = call("/recognize", {"image": PNG_B64, "kind": "text"})
     check("auth: no token -> 401", s, 401, b)
     s, b = call("/recognize", {"image": PNG_B64, "kind": "text"}, {"X-API-Token": "wrong"})

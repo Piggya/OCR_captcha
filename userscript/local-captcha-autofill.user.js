@@ -2,7 +2,7 @@
 // @name         土著内网验证码识别
 // @icon         data:image/png;base64,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
 // @namespace    http://local-captcha-ocr.internal/
-// @version      0.9.0
+// @version      0.9.1
 // @description  Use an internal OCR service to recognize and fill captcha fields on every site.
 // @author       Piggya
 // @updateURL    https://raw.githubusercontent.com/Piggya/OCR_captcha/main/userscript/local-captcha-autofill.user.js
@@ -20,6 +20,10 @@
 // ==/UserScript==
 
 // CHANGELOG (see docs/README.md):
+// 0.9.1  - LAN auto-config: when installed from the OCR server, the server
+//          injects the URL + token and points @updateURL/@downloadURL back at
+//          itself, so colleagues do not type either value. The public GitHub
+//          copy stays token-free. Added one-click portable launchers.
 // 0.9.0  - Public-release model: no token/server URL is embedded. Configure
 //          once via the menu (stored in GM storage). Added @updateURL /
 //          @downloadURL (GitHub) plus an in-LAN update command that opens
@@ -85,8 +89,15 @@
   // them once (menu "设置服务器地址与 token…") and they are stored in GM
   // storage, so the same script works for any deployment and can be
   // auto-updated without exposing secrets.
+  //
+  // LAN install: when this file is downloaded from
+  // http://<server>:1205/userscript.user.js, the server replaces the null
+  // below with the current server URL and token. No manual setup is needed.
   const CFG_SERVER_KEY = "ocr_server_url";
   const CFG_TOKEN_KEY = "ocr_api_token";
+  const DEFAULT_SERVER_URL = "http://127.0.0.1:1205";
+
+  const INJECTED_CONFIG = null;
 
   function normalizeServerUrl(url) {
     return String(url || "").trim().replace(/\/+$/, "");
@@ -97,8 +108,36 @@
   function getStoredToken() {
     return String(GM_getValue(CFG_TOKEN_KEY, "") || "");
   }
+  function hasInjectedConfig() {
+    return Boolean(INJECTED_CONFIG && typeof INJECTED_CONFIG === "object");
+  }
+  function injectedServerUrl() {
+    return hasInjectedConfig()
+      ? normalizeServerUrl(INJECTED_CONFIG.serverUrl)
+      : "";
+  }
+  function injectedToken() {
+    return hasInjectedConfig()
+      ? String(INJECTED_CONFIG.token || "").trim()
+      : "";
+  }
+  // Injected values win over stored ones: after a token rotation, bumping the
+  // script version makes every LAN client pick up the new token automatically.
+  function effectiveServerUrl() {
+    return injectedServerUrl() || getStoredServerUrl() || DEFAULT_SERVER_URL;
+  }
+  function effectiveToken() {
+    return injectedToken() || getStoredToken();
+  }
   function isConfigured() {
-    return Boolean(getStoredServerUrl() && getStoredToken());
+    return Boolean(effectiveServerUrl() && effectiveToken());
+  }
+
+  // Cache injected values so the menu still works if the script is later
+  // loaded from a copy where INJECTED_CONFIG is null.
+  if (hasInjectedConfig()) {
+    if (injectedServerUrl()) GM_setValue(CFG_SERVER_KEY, injectedServerUrl());
+    if (injectedToken()) GM_setValue(CFG_TOKEN_KEY, injectedToken());
   }
 
   async function probeServer(serverUrl) {
@@ -124,12 +163,12 @@
     if (!force && isConfigured()) return true;
     const enteredUrl = prompt(
       "OCR 服务器地址（例如 http://192.168.1.100:1205）",
-      getStoredServerUrl() || "http://127.0.0.1:1205"
+      effectiveServerUrl()
     );
     if (enteredUrl === null) return false;
     const enteredToken = prompt(
       "OCR 访问 token（向管理员索取）",
-      getStoredToken()
+      effectiveToken()
     );
     if (enteredToken === null) return false;
     const serverUrl = normalizeServerUrl(enteredUrl);
@@ -163,7 +202,7 @@
   // /userscript.user.js. Opening it lets Tampermonkey offer an update even
   // when github.com is unreachable.
   function openServerUserscript() {
-    const serverUrl = getStoredServerUrl();
+    const serverUrl = injectedServerUrl() || getStoredServerUrl();
     if (!serverUrl) {
       notify("尚未配置服务器地址");
       return;
@@ -175,8 +214,8 @@
   }
 
   const CONFIG = {
-    serverUrl: getStoredServerUrl() || "http://127.0.0.1:1205",
-    token: getStoredToken(),
+    serverUrl: effectiveServerUrl(),
+    token: effectiveToken(),
     autoRun: true,
     retryAfterRefreshMs: 800,
     rules: [

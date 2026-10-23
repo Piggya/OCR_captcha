@@ -1,5 +1,12 @@
 # 开发日志
 
+## 0.9.1 (2026-10-23)
+- **免手动配置**：`GET /userscript.user.js` 现在把当前服务器地址和 token 注入 `INJECTED_CONFIG`，并把 `@updateURL` / `@downloadURL` 指向服务器本身。同事从内网地址安装脚本后无需再填 URL/token；注入值优先于本地存储，轮换 token 后升版本即可自动下发。
+- **安全**：该端点只对 `allowed_clients` 中的 IP 返回，并带 `Cache-Control: no-store`；公开 GitHub 脚本仍保持 `INJECTED_CONFIG = null`、无 token。
+- **一键便携包**：新增 `Start-OCR.bat`（自动提权）、`Stop-OCR.bat`、`README-FIRST.txt`；`setup_new_server.ps1` 新增 `-NonInteractive`，自动接受探测到的内网 IP，并把脚本地址复制到剪贴板。
+- **构建**：`tools/build_portable.ps1` 打包上述启动/说明文件。
+- **文档**：README/DEPLOY 改为“解压 → 双击 → 发链接”的流程，并说明内网脚本自动带 token、公开脚本需手动配置。
+
 ## 0.9.0 (2026-10-23)
 公开发布准备：支持 GitHub 拉取部署 + 油猴脚本在线更新。
 - **去密钥发布**：油猴脚本不再内嵌 token / 服务器地址；首次运行提示或菜单「设置服务器地址与 token…」填写，保存到 `GM_setValue`。移除了 local/office profile 自动探测（同时消除 B5 类首跑 401 断路器问题）。

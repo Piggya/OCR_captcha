@@ -13,10 +13,18 @@
 #
 # Usage (MUST run as Administrator for firewall + power settings):
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup_new_server.ps1
+#   powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup_new_server.ps1 -NonInteractive
+#
+# -NonInteractive accepts the detected LAN IP without prompting. Start-OCR.bat
+# uses it so a colleague only has to double-click and approve the UAC prompt.
 #
 # If not running as admin, the script will still configure config + start the
 # service, but will skip firewall and power settings with a warning.
 # -----------------------------------------------------------------------------
+
+param(
+    [switch]$NonInteractive
+)
 
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
@@ -124,12 +132,16 @@ function Get-PrimaryLanIPv4 {
 
 $lanIp = Get-PrimaryLanIPv4
 Write-Host "      Detected LAN IP: $lanIp"
-$confirmedIp = Read-Host "      Confirm or enter correct LAN IP [press Enter to accept '$lanIp']"
-if ([string]::IsNullOrWhiteSpace($confirmedIp)) {
-    $confirmedIp = $lanIp
+if ($NonInteractive) {
+    Write-Host "      Using detected LAN IP (non-interactive): $lanIp" -ForegroundColor Green
+} else {
+    $confirmedIp = Read-Host "      Confirm or enter correct LAN IP [press Enter to accept '$lanIp']"
+    if ([string]::IsNullOrWhiteSpace($confirmedIp)) {
+        $confirmedIp = $lanIp
+    }
+    $lanIp = $confirmedIp
+    Write-Host "      Using LAN IP: $lanIp" -ForegroundColor Green
 }
-$lanIp = $confirmedIp
-Write-Host "      Using LAN IP: $lanIp" -ForegroundColor Green
 
 # --- Step 3: Configure config.json + generate token ----------------------------
 Write-Host ""
@@ -285,6 +297,9 @@ try {
 }
 
 # --- Print summary -------------------------------------------------------------
+$userscriptUrl = "http://${lanIp}:$port/userscript.user.js"
+try { Set-Clipboard -Value $userscriptUrl } catch { }
+
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host " Setup Complete!" -ForegroundColor Green
@@ -296,11 +311,10 @@ Write-Host ""
 Write-Host "  Userscript: http://${lanIp}:$port/userscript.user.js" -ForegroundColor Yellow
 Write-Host "    -> Install this URL in Tampermonkey (no file copy needed)" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "  Colleagues: install the URL above, then open the Tampermonkey menu" -ForegroundColor Yellow
-Write-Host "    -> 设置服务器地址与 token…" -ForegroundColor Yellow
-Write-Host ("       Server URL : http://{0}:{1}" -f $lanIp, $port) -ForegroundColor White
-Write-Host ("       API token  : {0}" -f $config.api_token) -ForegroundColor White
-Write-Host "  (The token is NOT embedded in the public script; enter it once.)" -ForegroundColor DarkGray
+Write-Host "  Colleagues: open the userscript URL above in a browser with Tampermonkey." -ForegroundColor Yellow
+Write-Host "    The server URL and token are injected automatically - no manual setup." -ForegroundColor Yellow
+Write-Host ("       API token (admin/reference only): {0}" -f $config.api_token) -ForegroundColor DarkGray
+Write-Host "  (The public GitHub script stays token-free; only this LAN URL embeds it.)" -ForegroundColor DarkGray
 Write-Host ""
 
 if (-not $isAdmin) {
@@ -312,6 +326,7 @@ if (-not $isAdmin) {
     Write-Host ""
 }
 
-Write-Host "  To stop the service: Get-NetTCPConnection -LocalPort 1205 -State Listen | ForEach-Object { Stop-Process -Id `$_.OwningProcess -Force }" -ForegroundColor DarkGray
+Write-Host "  To stop the service: double-click Stop-OCR.bat (or use the command below)" -ForegroundColor DarkGray
+Write-Host "    Get-NetTCPConnection -LocalPort 1205 -State Listen | ForEach-Object { Stop-Process -Id `$_.OwningProcess -Force }" -ForegroundColor DarkGray
 Write-Host "  To restart: powershell -File tools\restart_server.ps1" -ForegroundColor DarkGray
 Write-Host ""

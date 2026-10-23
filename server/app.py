@@ -2,6 +2,7 @@
 import hashlib
 import ipaddress
 import json
+import re
 import secrets
 import time
 import uuid
@@ -20,7 +21,7 @@ from .ocr_engine import (
     decode_image_data,
 )
 
-__version__ = "0.9.0"
+__version__ = "0.9.1"
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -216,25 +217,69 @@ def version() -> dict[str, str]:
 
 
 @app.get("/userscript.user.js")
-def userscript() -> Response:
-    """Serve the Tampermonkey script itself.
+def userscript(request: Request) -> Response:
+    """Serve the Tampermonkey script with this server pre-configured.
 
-    This lets a fully isolated LAN update the userscript without GitHub: the
-    script points its ``@updateURL`` at GitHub, but the menu command
-    "从服务器更新脚本（内网）" opens this endpoint instead. The file contains
-    no secrets (the token is configured in the browser), so it is safe to
-    serve without authentication.
+    LAN clients install the script straight from the OCR server, so the
+    script body gets ``INJECTED_CONFIG`` (server URL + API token) and its
+    ``@updateURL``/``@downloadURL`` point back here. That removes the manual
+    "set server URL and token" step for colleagues.
+
+    Because the rendered script contains the token, this endpoint is limited
+    to ``allowed_clients`` (the same IP allowlist used by ``/recognize``).
+    The copy committed to git keeps ``INJECTED_CONFIG = null`` and GitHub
+    update URLs, so the public raw script never contains a secret.
     """
+    client_host = get_client_host(request)
+    if not client_allowed(client_host):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Client is not allowed: {client_host}",
+        )
+
     try:
         content = USERSCRIPT_PATH.read_text(encoding="utf-8")
     except OSError as exc:
         raise HTTPException(
             status_code=404, detail="userscript not found on server"
         ) from exc
+    content = content.replace("\r\n", "\n").replace("\r", "\n")
+
+    base_url = str(request.base_url).rstrip("/")
+    if not re.fullmatch(r"https?://[A-Za-z0-9.\-:\[\]]+", base_url):
+        # Defensive: never splice an arbitrary Host header into the comment
+        # lines below. Ordinary IPs/hostnames (incl. IPv6) pass the check.
+        base_url = f"http://127.0.0.1:{CONFIG.get('port', 1205)}"
+    token = str(CONFIG.get("api_token") or "")
+    if token in {"", "change-me-to-a-random-internal-token"}:
+        # Keep the URL so the manual prompt is pre-filled, but never hand out
+        # a placeholder token (the script would then appear configured and
+        # every OCR call would fail with 401).
+        token = ""
+
+    injected = json.dumps(
+        {"serverUrl": base_url, "token": token}, ensure_ascii=False
+    )
+    content = re.sub(
+        r"^([ \t]*)const INJECTED_CONFIG = null;.*$",
+        lambda match: f"{match.group(1)}const INJECTED_CONFIG = {injected};",
+        content,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    for key in ("@updateURL", "@downloadURL"):
+        content = re.sub(
+            rf"^// {key}\s+.*$",
+            f"// {key}    {base_url}/userscript.user.js",
+            content,
+            count=1,
+            flags=re.MULTILINE,
+        )
+
     return Response(
         content=content,
         media_type="text/javascript; charset=utf-8",
-        headers={"Cache-Control": "no-cache"},
+        headers={"Cache-Control": "no-store"},
     )
 
 

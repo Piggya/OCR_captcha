@@ -7,7 +7,7 @@
 #
 # Run this on the OLD machine (the one that already has a working .venv).
 # The output is OCR-portable.zip which can be extracted on any Windows x64
-# machine and started with start_server.ps1.
+# machine and started by double-clicking Start-OCR.bat.
 #
 # Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_portable.ps1
@@ -213,6 +213,9 @@ $includeItems = @(
     "docs",
     "start_server.ps1",
     "start_server.bat",
+    "Start-OCR.bat",
+    "Stop-OCR.bat",
+    "README-FIRST.txt",
     "install.ps1",
     "requirements.txt",
     "README.md",
@@ -275,7 +278,7 @@ Write-Host "  Size:    $([math]::Round($zipSize, 1)) MB" -ForegroundColor White
 Write-Host ""
 Write-Host "  Next steps:" -ForegroundColor Yellow
 Write-Host "  1. Copy OCR-portable.zip to the new machine" -ForegroundColor Yellow
-Write-Host "  2. Extract to a directory (e.g. D:\OCR)" -ForegroundColor Yellow
-Write-Host "  3. Run as administrator:" -ForegroundColor Yellow
-Write-Host "     powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup_new_server.ps1" -ForegroundColor Yellow
+Write-Host "  2. Extract to a local directory (e.g. D:\OCR)" -ForegroundColor Yellow
+Write-Host "  3. Double-click Start-OCR.bat (approve the UAC prompt)" -ForegroundColor Yellow
+Write-Host "     It configures the token, firewall, and starts the service." -ForegroundColor Yellow
 Write-Host ""

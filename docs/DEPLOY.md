@@ -9,16 +9,16 @@
 
 ```
 ① 旧机器运行 tools\build_portable.ps1          → 生成 OCR-portable.zip
-② OCR-portable.zip 传到新机器                   → U盘/共享文件夹
-③ 新机器解压到 E:\OCR                           → 保持目录一致
-④ 管理员 PowerShell 执行：                        → 一行搞定全部
-   cd E:\OCR
-   powershell -File tools\setup_new_server.ps1
-⑤ 同事安装脚本地址 http://<新机器IP>:1205/userscript.user.js
-   → 在油猴菜单「设置服务器地址与 token…」填入 URL 和 token
+② OCR-portable.zip 传到新机器                   → U盘/共享文件夹/Release 下载
+③ 新机器解压到 E:\OCR                           → 本地目录，不要在网络共享里运行
+④ 双击 Start-OCR.bat                            → UAC 点“是”，自动完成全部配置
+   （等价命令：powershell -File tools\setup_new_server.ps1 -NonInteractive）
+⑤ 把窗口显示（已复制到剪贴板）的脚本地址发给同事
+   http://<新机器IP>:1205/userscript.user.js
+   → 同事打开安装即可，无需填 URL/token
 ```
 
-`setup_new_server.ps1` 自动完成：检测 IP → 生成 token → 开防火墙 → 设置电源 → 启动服务（后台运行，关窗口不影响），并在结尾打印同事所需的 Server URL 和 token。
+`Start-OCR.bat` 会自提权并调用 `setup_new_server.ps1 -NonInteractive`：接受探测到的 IP → 生成 token → 开防火墙 → 设置电源 → 后台启动服务，并在结尾打印脚本地址。token 只在第一次运行时生成，之后重启不会变化。
 
 > 重启电脑后服务停止，需设置开机自启 → 见末尾"开机自启"章节。
 
@@ -66,26 +66,29 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_portable.ps1
 
 将 `OCR-portable.zip` 解压到目标目录（建议和旧机器目录一致，例如 `D:\OCR`）。
 
-> 路径不要有中文或空格。
+> 路径不要有中文或空格；不要直接在压缩包里运行，也不要放在 UNC 网络路径下。
 
-**右键** PowerShell → **以管理员身份运行**，然后：
+双击 **`Start-OCR.bat`**（自动请求管理员权限）。如果 SmartScreen 拦截，点“更多信息” → “仍要运行”。
+
+也可以手动执行：
 
 ```powershell
 cd D:\OCR
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup_new_server.ps1
+# 想跳过 IP 确认（默认接受探测结果）：加 -NonInteractive
 ```
 
 脚本会自动完成：
 1. 验证便携 Python 和依赖
-2. 探测本机 LAN IP（会提示确认，按 Enter 即可）
-3. 生成 `server\config.json`（含真实随机 token）
+2. 探测本机 LAN IP（`-NonInteractive` 时自动接受；否则按 Enter 确认）
+3. 生成 `server\config.json`（首次运行生成真实随机 token，之后保留）
 4. 检查 `userscript\local-captcha-autofill.user.js`（供 `/userscript.user.js` 分发）
 5. 开放防火墙 1205 端口
 6. 设置电源（睡眠=从不，防止息屏后服务挂起）
 7. 启动 uvicorn 服务
 8. 健康检查
 
-看到 `Setup Complete!` 和 `Health check: OK` 表示成功，结尾会打印同事所需的 Server URL 与 token。之后让同事打开脚本地址并填一次即可。
+看到 `Setup Complete!` 和 `Health check: OK` 表示成功。结尾会打印脚本地址并复制到剪贴板，直接发给同事即可；服务端会在脚本里注入 URL 和 token。
 
 ### 如果没有管理员权限
 
@@ -106,12 +109,12 @@ powercfg /change hibernate-timeout-ac 0
 1. 浏览器安装 Tampermonkey 扩展
 2. 打开 `http://<服务器IP>:1205/userscript.user.js`，Tampermonkey 会提示安装
    - 隔离内网也可直接把 `userscript\local-captcha-autofill.user.js` 拖入 Tampermonkey
-3. 打开 Tampermonkey 菜单 →「设置服务器地址与 token…」
-   - **Server URL**：`http://<服务器IP>:1205`
-   - **token**：`setup_new_server.ps1` 结尾打印的值（或 `server\config.json` 的 `api_token`）
-4. 重配/查看：菜单「设置服务器地址与 token…」/「查看当前服务器」
+3. 安装完成即可使用：服务端已经把服务器地址和 token 注入脚本，**不需要填**
+   - 注入值优先于浏览器本地存储；服务器换 IP 或轮换 token 后，升一次脚本版本即可自动同步
+4. 只有手动安装公开 GitHub 脚本时，才需要菜单「设置服务器地址与 token…」
+5. 重配/查看：菜单「设置服务器地址与 token…」/「查看当前服务器」
 
-> 公开脚本**不内嵌 token**，每位同事首次使用需填一次（只存浏览器本地）。
+> 内网脚本地址包含 token，只对 `allowed_clients` 中的 IP 返回，不要发到公网。
 > 更新方式：能上外网时脚本按 `@updateURL` 自动更新；隔离内网用菜单「从服务器更新脚本（内网）」。
 
 ---
@@ -170,8 +173,9 @@ Get-NetTCPConnection -LocalPort 1205 -State Listen | ForEach-Object { Stop-Proce
 ```powershell
 Get-Content D:\OCR\server\config.json | ConvertFrom-Json | Select-Object -ExpandProperty api_token
 ```
-脚本本身不含 token（存在浏览器本地）。让同事在油猴菜单「设置服务器地址与 token…」重新填写服务端 token。
-若轮换了服务端 token，重启服务并通知所有同事更新。
+从内网地址安装的脚本带服务端注入的 token；公开 GitHub 脚本不含 token（存在浏览器本地）。
+若轮换了服务端 token：重启服务后，升一次脚本 `@version` 让内网脚本自动更新；或让同事重新打开 `http://<服务器IP>:1205/userscript.user.js` 安装一次。
+如果同事是手动安装的公开脚本，则在菜单「设置服务器地址与 token…」里改成新 token。
 
 ### OCR 请求超时
 ```powershell
@@ -209,12 +213,12 @@ Get-Content D:\OCR\server.err.log -Tail 20
 
 | 操作 | 命令 |
 |------|------|
-| 首次部署（一行搞定） | `powershell -File tools\setup_new_server.ps1`（管理员） |
-| 重启服务 | `powershell -File tools\restart_server.ps1` |
-| 停止服务 | `Get-NetTCPConnection -LocalPort 1205 -State Listen \| ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }` |
+| 首次部署（一键） | 双击 `Start-OCR.bat` |
+| 重启服务 | 双击 `Start-OCR.bat` 或 `powershell -File tools\restart_server.ps1` |
+| 停止服务 | 双击 `Stop-OCR.bat` |
 | 检查健康 | 浏览器打开 `http://127.0.0.1:1205/health` |
 | 查看日志 | `Get-Content server.err.log -Tail 20` |
-| IP 变了 | 重跑 `tools\setup_new_server.ps1`，重发 `local-captcha-autofill.user.js` |
+| IP 变了 | 重跑 `Start-OCR.bat`，把新脚本地址发给同事（旧地址会失效） |
 
 ### 开机自启
 

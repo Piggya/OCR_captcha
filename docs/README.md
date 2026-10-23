@@ -1,4 +1,4 @@
-# 土著内网验证码识别 v0.9.0
+# 土著内网验证码识别 v0.9.1
 
 公司内网用的纯本地验证码识别 + 自动填充方案。基于 FastAPI + ddddocr + Tampermonkey。
 
@@ -36,6 +36,9 @@ D:\OCR
 │  ├─ README.md             # 本文档 - 系统介绍
 │  ├─ DEPLOY.md             # 部署迁移指南
 │  └─ CHANGELOG.md          # 开发日志
+├─ Start-OCR.bat            # 便携版一键启动（自动提权）
+├─ Stop-OCR.bat             # 便携版一键停止
+├─ README-FIRST.txt         # 便携版给使用者的说明
 ├─ start_server.ps1         # 启动脚本（开发环境用）
 └─ requirements.txt         # Python 依赖
 ```
@@ -57,8 +60,16 @@ D:\OCR
 
 ---
 
-## 快速开始（开发环境）
+## 快速开始
 
+### 便携版（推荐给新机器/同事）
+1. 下载并解压 `OCR-portable.zip` 到本地目录
+2. 双击 `Start-OCR.bat`，UAC 点“是”
+3. 把窗口里显示（且已复制到剪贴板）的
+   `http://<服务器IP>:1205/userscript.user.js` 发给同事
+4. 同事装好 Tampermonkey 后打开该地址安装即可，**无需填写 URL/token**
+
+### 开发环境
 **前提**：Windows 10/11 + PowerShell 5.1+ + Python 3.10+
 
 ```powershell
@@ -71,20 +82,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 1. 探测本机内网 IP
 2. 生成配置和随机 api_token
 3. 启动 uvicorn 服务
-4. 打印同事所需的 Server URL、token 和脚本地址
+4. 打印同事所需的脚本地址（token 由服务端自动注入）
 
-启动后打开 `http://<服务器IP>:1205/userscript.user.js` 安装脚本，再在油猴菜单「设置服务器地址与 token…」填入 URL + token。
+打开 `http://<服务器IP>:1205/userscript.user.js` 安装脚本即可，脚本内的服务器地址和 token 由服务端注入，不需要手动填写。公开 GitHub 上的脚本不含 token，安装后才需要手动配置。
 
 ---
 
 ## 部署模式
 
 ### 单设备（自己用）
-打开 `http://127.0.0.1:1205/userscript.user.js` 安装，填入 URL + token。
+打开 `http://127.0.0.1:1205/userscript.user.js` 安装，服务端会自动注入 URL + token。
 
 ### 集中部署（推荐）
 - 你的电脑作为服务端，7×24 在线
-- 同事只需装 Tampermonkey + 安装脚本 + 填一次 URL/token，不需要 Python
+- 同事只需装 Tampermonkey + 打开内网脚本地址，不需要 Python，也不需要填 URL/token
+- 内网脚本地址只对 `allowed_clients` 中的 IP 提供，并且包含 token，不要发到公网
 - 新设备部署详见 [DEPLOY.md](DEPLOY.md)
 
 ---
@@ -95,7 +107,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 |------|------|------|------|
 | GET | `/health` | 健康检查 | 无 |
 | GET | `/version` | 版本信息 | 无 |
+| GET | `/userscript.user.js` | 油猴脚本（注入当前服务器 URL + token） | IP 白名单 |
 | POST | `/recognize` | 识别验证码 | 需 token |
+
+`/userscript.user.js` 只对 `allowed_clients` 中的 IP 返回，并把 `INJECTED_CONFIG`、`@updateURL`、`@downloadURL` 指向当前服务器；响应带 `Cache-Control: no-store`。公开 GitHub 上的同一脚本保持 `INJECTED_CONFIG = null`，不含 token。
 
 ### POST /recognize
 
