@@ -1,0 +1,25 @@
+﻿{
+    "api_token": "change-me-to-a-random-internal-token",
+    "work_lan_ip": "",
+    "bind_host": "0.0.0.0",
+    "port": 1205,
+    "allowed_clients": [
+        "127.0.0.1",
+        "::1",
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16"
+    ],
+    "save_debug_images": false,
+    "debug_image_dir": "debug-images",
+    "max_debug_images_per_bucket": 100,
+    "ocr": {
+        "engine": "ddddocr",
+        "charsets": "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        "probability": false,
+        "dual_model": true,
+        "min_char_confidence": 0.6
+    },
+    "trust_proxy": false,
+    "max_image_bytes": 5242880
+}

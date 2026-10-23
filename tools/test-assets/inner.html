@@ -1,0 +1,22 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Mock iframe inner captcha</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 280px; margin: 16px auto; }
+  .captcha-row { display: flex; gap: 8px; align-items: center; }
+  img { height: 32px; }
+  input.el-input__inner { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <h4>iframe inner</h4>
+  <form onsubmit="return false">
+    <div class="captcha-row">
+      <input class="el-input__inner" placeholder="验证码" />
+      <div class="captcha"><img src="/captcha-A8K3.png" alt="captcha" /></div>
+    </div>
+  </form>
+</body>
+</html>

@@ -1,0 +1,68 @@
+﻿# Python
+.venv/
+# portable Python embeddable (built by tools/build_portable.ps1)
+python/
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Service runtime artifacts
+server.log
+server.err.log
+# contains real api_token - never commit
+server/config.json
+
+# Build artifacts (per-machine)
+# NOTE: userscript/local-captcha-autofill.user.js is intentionally tracked.
+# It contains NO secrets (server URL + token are entered in the browser and
+# stored in GM storage), so it is safe to publish for auto-updating.
+# portable package built by tools/build_portable.ps1
+OCR-portable.zip
+
+# Test artifacts
+docs/TEST-REPORT-*.md
+tools/test-assets/benchmark-report.html
+tools/test-assets/result*.png
+tools/test-assets/edge-profile/
+__diag*.txt
+__e2e_*.py
+__mock.err
+__body_*.txt
+__patch_*.py
+__write_*.py
+__add_*.py
+__cleanup_*.py
+__rewrite_*.py
+__fix_*.py
+__bump_*.py
+__gen_*.ps1
+__gen_only.ps1
+__static*.py
+__static*.err
+__restart*.ps1
+__start*.ps1
+__old_*.txt
+__p5*.py
+__simulated.js
+__show*.js
+__validate.js
+__check.js
+__concurrency.py
+__gen_test_captcha.py
+__toggle.py
+__probe*.py
+__config_*.py
+__bump_ver.py
+__stress.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Runtime debug images (written by save_debug_images when on)
+debug-images/
