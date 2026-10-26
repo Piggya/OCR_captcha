@@ -42,6 +42,7 @@ echo.
 if "%rc%"=="0" (
     echo Setup finished.
     echo The colleagues' userscript URL was copied to the clipboard.
+    echo To view/copy server URL + token later: double-click Show-OCR-Info.bat
     start "" "http://127.0.0.1:1205/userscript.user.js"
 ) else (
     echo [ERROR] Setup failed with exit code %rc%.

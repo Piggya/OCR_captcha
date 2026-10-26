@@ -16,6 +16,8 @@
 ⑤ 把窗口显示（已复制到剪贴板）的脚本地址发给同事
    http://<新机器IP>:1205/userscript.user.js
    → 同事打开安装即可，无需填 URL/token
+⑥ 需要地址+token 时双击 Show-OCR-Info.bat
+   → 服务器地址、API token、安装地址已复制到剪贴板
 ```
 
 `Start-OCR.bat` 会自提权并调用 `setup_new_server.ps1 -NonInteractive`：接受探测到的 IP → 生成 token → 开防火墙 → 设置电源 → 后台启动服务，并在结尾打印脚本地址。token 只在第一次运行时生成，之后重启不会变化。
@@ -111,11 +113,12 @@ powercfg /change hibernate-timeout-ac 0
    - 隔离内网也可直接把 `userscript\local-captcha-autofill.user.js` 拖入 Tampermonkey
 3. 安装完成即可使用：服务端已经把服务器地址和 token 注入脚本，**不需要填**
    - 注入值优先于浏览器本地存储；服务器换 IP 或轮换 token 后，升一次脚本版本即可自动同步
-4. 只有手动安装公开 GitHub 脚本时，才需要菜单「设置服务器地址与 token…」
-5. 重配/查看：菜单「设置服务器地址与 token…」/「查看当前服务器」
+4. 只有手动安装公开 GitHub 脚本时，才需要菜单「OCR 设置…」
+5. 重配/查看：菜单「OCR 设置…」
+6. 服务器上双击 `Show-OCR-Info.bat` 可显示并复制“服务器地址 + token + 安装地址”
 
 > 内网脚本地址包含 token，只对 `allowed_clients` 中的 IP 返回，不要发到公网。
-> 更新方式：能上外网时脚本按 `@updateURL` 自动更新；隔离内网用菜单「从服务器更新脚本（内网）」。
+> 更新方式：能上外网时脚本按 `@updateURL` 自动更新；隔离内网用菜单「从内网服务器更新…」。
 
 ### 局域网其他电脑（不装服务端）
 
@@ -186,7 +189,7 @@ Get-Content D:\OCR\server\config.json | ConvertFrom-Json | Select-Object -Expand
 ```
 从内网地址安装的脚本带服务端注入的 token；公开 GitHub 脚本不含 token（存在浏览器本地）。
 若轮换了服务端 token：重启服务后，升一次脚本 `@version` 让内网脚本自动更新；或让同事重新打开 `http://<服务器IP>:1205/userscript.user.js` 安装一次。
-如果同事是手动安装的公开脚本，则在菜单「设置服务器地址与 token…」里改成新 token。
+如果同事是手动安装的公开脚本，则在菜单「OCR 设置…」里改成新 token。
 
 ### OCR 请求超时
 ```powershell
@@ -249,6 +252,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\update_ocr.ps1 -Source
 | 操作 | 命令 |
 |------|------|
 | 首次部署（一键） | 双击 `Start-OCR.bat` |
+| 查看/分享地址 + token | 双击 `Show-OCR-Info.bat`（自动复制到剪贴板） |
 | 更新服务端（一键，保留 config/python） | 双击 `Update-OCR.bat` |
 | 离线更新 | `powershell -File tools\update_ocr.ps1 -SourceZip "C:\path\main.zip"` |
 | 重启服务 | 双击 `Start-OCR.bat` 或 `powershell -File tools\restart_server.ps1` |

@@ -316,6 +316,7 @@ Write-Host "  Colleagues: open the userscript URL above in a browser with Tamper
 Write-Host "    The server URL and token are injected automatically - no manual setup." -ForegroundColor Yellow
 Write-Host ("       API token (admin/reference only): {0}" -f $config.api_token) -ForegroundColor DarkGray
 Write-Host "  (The public GitHub script stays token-free; only this LAN URL embeds it.)" -ForegroundColor DarkGray
+Write-Host "  Full URL + token: double-click Show-OCR-Info.bat (copies to clipboard)." -ForegroundColor DarkGray
 Write-Host ""
 
 if (-not $isAdmin) {

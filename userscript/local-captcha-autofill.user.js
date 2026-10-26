@@ -2,7 +2,7 @@
 // @name         土著内网验证码识别
 // @icon         data:image/png;base64,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
 // @namespace    http://local-captcha-ocr.internal/
-// @version      0.9.3
+// @version      0.9.4
 // @description  Use an internal OCR service to recognize and fill captcha fields on every site.
 // @description:zh-CN  自托管内网验证码识别：OCR 自动识别并填入验证码。需自行部署服务端（GitHub 提供 Windows 便携包）。
 // @author       Piggya
@@ -25,6 +25,10 @@
 // ==/UserScript==
 
 // CHANGELOG (see docs/README.md):
+// 0.9.4  - Shortened the Tampermonkey menu to five items; site rules, case
+//          switching and breaker reset moved into a "高级功能" dialog.
+//          Added Show-OCR-Info.bat (server URL + token + install URL,
+//          copied to the clipboard).
 // 0.9.3  - Replaced the two prompt() boxes with a proper settings dialog
 //          (server URL + token, test connection, save). Opened from the
 //          Tampermonkey menu. No OCR behavior change.
@@ -407,14 +411,6 @@
       document.documentElement.appendChild(overlay);
       window.setTimeout(() => urlInput.focus(), 0);
     });
-  }
-
-  function showCurrentServer() {
-    if (!isConfigured()) {
-      notify("尚未配置服务器，请使用菜单「设置服务器地址与 token…」");
-      return;
-    }
-    notify(`当前服务器: ${CONFIG.serverUrl}`);
   }
 
   // Isolated-LAN update path: the OCR server also hosts the script at
@@ -1284,18 +1280,145 @@
     setTimeout(() => { try { recognizeAndFill(); } catch (_) {} }, 50);
   }
 
-  GM_registerMenuCommand("识别并填入验证码", recognizeAndFill);
-  GM_registerMenuCommand("刷新验证码后识别", refreshAndRecognize);
-  GM_registerMenuCommand("切换验证码大小写（大写/小写/原样）", cycleCaseForHost);
-  GM_registerMenuCommand("重置本网站断路器", resetBreaker);
-  GM_registerMenuCommand("为本网站添加规则...", promptUserRule);
-  GM_registerMenuCommand("查看本网站规则", listUserRulesForHost);
-  GM_registerMenuCommand("删除本网站规则", clearUserRulesForHost);
-  GM_registerMenuCommand("清空所有用户规则", clearAllUserRules);
-  GM_registerMenuCommand("--- 服务器 ---", () => {});
-  GM_registerMenuCommand("设置服务器地址与 token…", () => openServerConfigDialog(true));
-  GM_registerMenuCommand("查看当前服务器", showCurrentServer);
-  GM_registerMenuCommand("从服务器更新脚本（内网）", openServerUserscript);
+  // Keep the Tampermonkey menu short: common actions at top, site rules and
+  // recovery tools behind one "高级功能" dialog.
+  function openAdvancedDialog() {
+    const old = document.getElementById("local-captcha-ocr-advanced");
+    if (old) old.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "local-captcha-ocr-advanced";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "OCR 高级功能");
+    overlay.style.cssText = [
+      "position:fixed",
+      "inset:0",
+      "z-index:2147483647",
+      "display:flex",
+      "align-items:center",
+      "justify-content:center",
+      "padding:16px",
+      "box-sizing:border-box",
+      "background:rgba(0,0,0,.45)",
+      "font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif",
+      "color:#202124"
+    ].join(";");
+
+    const card = document.createElement("div");
+    card.style.cssText = [
+      "width:100%",
+      "max-width:420px",
+      "max-height:90vh",
+      "overflow:auto",
+      "box-sizing:border-box",
+      "background:#fff",
+      "border-radius:10px",
+      "box-shadow:0 12px 40px rgba(0,0,0,.35)",
+      "padding:18px 18px 14px"
+    ].join(";");
+    overlay.appendChild(card);
+
+    const title = document.createElement("div");
+    title.textContent = "OCR 高级功能";
+    title.style.cssText = "font-size:18px;font-weight:600;margin:0 0 4px";
+    card.appendChild(title);
+
+    const intro = document.createElement("div");
+    intro.textContent = "日常用不到；遇到验证码规则或识别异常时再打开。";
+    intro.style.cssText = "color:#5f6368;margin:0 0 10px";
+    card.appendChild(intro);
+
+    const current = document.createElement("div");
+    current.textContent = isConfigured()
+      ? `当前服务器：${effectiveServerUrl()}`
+      : "当前服务器：未配置";
+    current.style.cssText = "color:#5f6368;font-size:13px;margin:0 0 12px;word-break:break-all";
+    card.appendChild(current);
+
+    const addAction = (label, desc, fn) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.style.cssText = [
+        "display:block",
+        "width:100%",
+        "text-align:left",
+        "border:1px solid #dadce0",
+        "background:#fff",
+        "border-radius:6px",
+        "padding:9px 11px",
+        "margin:0 0 8px",
+        "font:14px/1.4 Arial,sans-serif",
+        "color:#202124",
+        "cursor:pointer"
+      ].join(";");
+      const name = document.createElement("div");
+      name.textContent = label;
+      name.style.cssText = "font-weight:600";
+      const sub = document.createElement("div");
+      sub.textContent = desc;
+      sub.style.cssText = "font-size:12px;color:#5f6368;margin-top:2px";
+      button.appendChild(name);
+      button.appendChild(sub);
+      button.addEventListener("mouseenter", () => { button.style.background = "#f8f9fa"; });
+      button.addEventListener("mouseleave", () => { button.style.background = "#fff"; });
+      button.addEventListener("click", () => {
+        finish();
+        window.setTimeout(() => { try { fn(); } catch (_) {} }, 0);
+      });
+      card.appendChild(button);
+    };
+
+    let resolved = false;
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      overlay.remove();
+    };
+
+    addAction("切换验证码大小写", "按当前网站切换：大写 / 小写 / 原样", cycleCaseForHost);
+    addAction("重置本网站断路器", "连续失败被暂停后手动恢复", resetBreaker);
+    addAction("添加本网站规则…", "自定义验证码图片和输入框选择器", promptUserRule);
+    addAction("查看本网站规则", "查看当前网站已保存的规则", listUserRulesForHost);
+    addAction("删除本网站规则", "只删除当前网站的规则", clearUserRulesForHost);
+    addAction("清空全部用户规则", "删除所有网站的规则", clearAllUserRules);
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "关闭";
+    close.style.cssText = [
+      "display:block",
+      "margin:8px 0 0 auto",
+      "border:0",
+      "border-radius:6px",
+      "padding:8px 14px",
+      "background:#f1f3f4",
+      "color:#202124",
+      "font:14px/1.4 Arial,sans-serif",
+      "cursor:pointer"
+    ].join(";");
+    close.addEventListener("click", finish);
+    card.appendChild(close);
+
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) finish();
+    });
+    overlay.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        finish();
+      }
+    });
+
+    document.documentElement.appendChild(overlay);
+    window.setTimeout(() => close.focus(), 0);
+  }
+
+  GM_registerMenuCommand("识别并填码", recognizeAndFill);
+  GM_registerMenuCommand("刷新后识别", refreshAndRecognize);
+  GM_registerMenuCommand("OCR 设置…", () => openServerConfigDialog(true));
+  GM_registerMenuCommand("高级功能…", openAdvancedDialog);
+  GM_registerMenuCommand("从内网服务器更新…", openServerUserscript);
 
   if (CONFIG.autoRun) {
     const boot = () => {

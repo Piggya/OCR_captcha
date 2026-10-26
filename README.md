@@ -69,6 +69,8 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 
 在已配置好的机器上运行 `tools/build_portable.ps1` 生成 `OCR-portable.zip`，拷到新机器解压后**双击 `Start-OCR.bat`** 即可（自动提权、生成 token、开防火墙、后台启动）。详见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
+启动后如需查看/复制服务器地址、token 和同事安装地址，双击 **`Show-OCR-Info.bat`**，完整信息会自动进剪贴板。
+
 ## 更新
 
 **服务端**
@@ -81,7 +83,7 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 - 从 0.9.1 及更早版本升级：旧包没有 `Update-OCR.bat`，需把新版里的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制进去，或解压完整新包后复制旧 `server/config.json`。
 
 **同事脚本**
-- 内网安装：Tampermonkey 管理面板 →「检查用户脚本更新」（`@updateURL` 指向服务器），或脚本菜单「从服务器更新脚本（内网）」。
+- 内网安装：Tampermonkey 管理面板 →「检查用户脚本更新」（`@updateURL` 指向服务器），或脚本菜单「从内网服务器更新…」。
 - GitHub 安装：从 GitHub 更新；建议重开一次内网脚本地址并点“更新”，之后切换到服务器托管更新。
 - 轮换 token：升一次 `@version`，客户端自动拉取；否则让同事重开内网地址安装一次。
 
@@ -91,7 +93,7 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 2. 打开 `http://<服务器IP>:1205/userscript.user.js` 安装
    - 或把仓库里的 `userscript/local-captcha-autofill.user.js` 直接拖进 Tampermonkey
 3. **从服务器地址安装时不需要任何手动配置**：服务端会把当前 URL + token 注入脚本
-   - 只有直接使用公开 GitHub/GreasyFork 脚本时，才需要在油猴扩展菜单「**设置服务器地址与 token…**」打开设置对话框填一次
+   - 只有直接使用公开 GitHub/GreasyFork 脚本时，才需要在油猴扩展菜单「**OCR 设置…**」打开设置对话框填一次
    - Tampermonkey 管理面板不支持自定义入口，入口只能在扩展菜单里
 
 > 内网脚本地址包含 token，且只对 `allowed_clients` 中的 IP 返回；公开 GitHub 脚本保持无 token。两种安装方式保存的配置都在浏览器本地（`GM_setValue`），升级脚本不会丢失。
@@ -107,7 +109,7 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 
 脚本头已指向本仓库。发布后，`@version` 变大时 Tampermonkey 会自动拉取（也可手动“检查用户脚本更新”）。
 
-**隔离内网**（无法访问 GitHub）：服务端同样托管了脚本，菜单「**从服务器更新脚本（内网）**」会打开 `http://<服务器IP>:1205/userscript.user.js`，由 Tampermonkey 完成更新。服务端返回的脚本会把 `@updateURL` / `@downloadURL` 改成自身地址，并重新注入当前 token，所以内网更新也能自动同步 token。
+**隔离内网**（无法访问 GitHub）：服务端同样托管了脚本，菜单「**从内网服务器更新…**」会打开 `http://<服务器IP>:1205/userscript.user.js`，由 Tampermonkey 完成更新。服务端返回的脚本会把 `@updateURL` / `@downloadURL` 改成自身地址，并重新注入当前 token，所以内网更新也能自动同步 token。
 
 **公开发布（GreasyFork）**：可把无 token 的公开脚本发布到 GreasyFork，方便搜索“内网验证码 OCR”。发布文案、分类、隐私说明见 [docs/GREASYFORK.md](docs/GREASYFORK.md)。服务端仍需用户自行部署；内网同事仍建议用服务器注入地址。
 
@@ -144,6 +146,7 @@ start_server.ps1 生成配置并启动服务
 Start-OCR.bat   便携版一键启动（自动提权）
 Stop-OCR.bat    便携版一键停止
 Update-OCR.bat  便携版一键更新（保留 config/python）
+Show-OCR-Info.bat 显示/复制服务器地址、token、安装地址
 README-FIRST.txt 便携版给使用者的说明
 ```
 

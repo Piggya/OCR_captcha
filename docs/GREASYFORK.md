@@ -93,7 +93,7 @@ GitHub push → GreasyFork 拉取 raw 文件 → 自动发布新版本。
 |------|--------|
 | 脚本名称 | `土著内网验证码识别` |
 | 命名空间 | `http://local-captcha-ocr.internal/`（保持原值） |
-| 版本 | 与脚本 `@version` 一致，例如 `0.9.3` |
+| 版本 | 与脚本 `@version` 一致，例如 `0.9.4` |
 | 描述 | 用下面的「简介」 |
 | 分类 | `Productivity`（效率/生产力） |
 | 许可证 | `MIT` |
@@ -141,9 +141,10 @@ https://github.com/Piggya/OCR_captcha
 本脚本从 GreasyFork 安装时不含服务器信息。安装后：
 
 1. 打开 Tampermonkey 菜单
-2. 选择「设置服务器地址与 token…」
+2. 选择「OCR 设置…」打开设置对话框
 3. 填入你的服务端地址，例如 `http://192.168.1.10:1205`
 4. 填入 `server/config.json` 里的 `api_token`
+5. 点「测试连接」确认 `/health` 正常，再点「保存」
 
 也可以直接打开服务端的内网脚本地址重装一次，脚本会自动带上配置。
 

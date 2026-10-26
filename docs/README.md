@@ -1,4 +1,4 @@
-# 土著内网验证码识别 v0.9.3
+# 土著内网验证码识别 v0.9.4
 
 公司内网用的纯本地验证码识别 + 自动填充方案。基于 FastAPI + ddddocr + Tampermonkey。
 
@@ -32,6 +32,7 @@ D:\OCR
 │  ├─ build_portable.ps1    # 构建便携包
 │  ├─ setup_new_server.ps1  # 新设备一键部署
 │  ├─ update_ocr.ps1        # 便携版原地更新（保留 config/python）
+│  ├─ show_info.ps1         # 显示/复制服务器地址、token、安装地址
 │  ├─ check_version_bump.ps1 # 发布前校验 GreasyFork @version 递增
 │  └─ restart_server.ps1    # 重启服务
 ├─ docs/                    # 文档
@@ -42,6 +43,7 @@ D:\OCR
 ├─ Start-OCR.bat            # 便携版一键启动（自动提权）
 ├─ Stop-OCR.bat             # 便携版一键停止
 ├─ Update-OCR.bat           # 便携版一键更新（自动提权）
+├─ Show-OCR-Info.bat        # 显示/复制服务器地址、token、安装地址
 ├─ README-FIRST.txt         # 便携版给使用者的说明
 ├─ start_server.ps1         # 启动脚本（开发环境用）
 └─ requirements.txt         # Python 依赖
@@ -72,6 +74,7 @@ D:\OCR
 3. 把窗口里显示（且已复制到剪贴板）的
    `http://<服务器IP>:1205/userscript.user.js` 发给同事
 4. 同事装好 Tampermonkey 后打开该地址安装即可，**无需填写 URL/token**
+5. 以后查看/复制完整连接信息：双击 `Show-OCR-Info.bat`（服务器地址 + token + 安装地址，自动进剪贴板）
 
 > 局域网其他电脑**不需要**下载 zip 或安装 Python，只需能访问服务器的 1205 端口 + Tampermonkey。
 
@@ -85,7 +88,7 @@ D:\OCR
 - 从 0.9.1 及更早版本升级：旧包没有 `Update-OCR.bat`，需把新版里的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制进去，或解压完整新包后复制旧 `server/config.json`。
 
 **同事脚本**
-- 内网安装：Tampermonkey 管理面板 →「检查用户脚本更新」，或菜单「从服务器更新脚本（内网）」。
+- 内网安装：Tampermonkey 管理面板 →「检查用户脚本更新」，或菜单「从内网服务器更新…」。
 - GitHub/GreasyFork 安装：按各自渠道更新；建议重开一次内网地址切换到服务器托管更新。
 - 轮换 token 后升一次 `@version`。
 
@@ -205,17 +208,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 
 ### 油猴菜单功能
 
-在油猴图标菜单中可使用以下功能：
-- **识别并填入验证码**：手动触发一次识别
-- **刷新验证码后识别**：点击验证码刷新按钮后识别
-- **切换验证码大小写（大写/小写/原样）**：按站点修正字母大小写，切换后自动重新识别
-- **重置本网站断路器**：连续失败被暂停后手动恢复
-- **为本网站添加规则...**：添加自定义 CSS 选择器
-- **查看本网站规则**：查看当前网站已保存的规则
-- **删除本网站规则**：删除当前网站的规则
-- **设置服务器地址与 token…**：打开设置对话框，填写 URL/token、显示 token、测试 `/health`、保存（存浏览器本地）
-- **查看当前服务器**：显示当前 Server URL
-- **从服务器更新脚本（内网）**：隔离内网时从 `http://<服务器IP>:1205/userscript.user.js` 更新
+油猴菜单已精简为 5 项：
+- **识别并填码**：手动触发一次识别
+- **刷新后识别**：点击验证码刷新按钮后识别
+- **OCR 设置…**：打开设置对话框，填写 URL/token、显示 token、测试 `/health`、保存（存浏览器本地）
+- **高级功能…**：打开二级对话框，包含大小写切换、重置断路器、站点规则的添加/查看/删除/清空
+- **从内网服务器更新…**：隔离内网时从 `http://<服务器IP>:1205/userscript.user.js` 更新
 
 > 入口在 Tampermonkey **扩展菜单**（页面右上角油猴图标）里；Tampermonkey 管理面板没有开放自定义入口 API，脚本无法往面板里加按钮。
 >
@@ -267,7 +265,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 - 服务端不要暴露到公网（路由器不要做 1205 端口转发）
 - 建议将油猴脚本的 `host` 从 `"*"` 改为公司具体域名
 - `server/config.json` 含敏感 token，不要提交到代码仓库（已被 `.gitignore` 忽略）
-- 油猴脚本**不含 token**：首次使用时在菜单「设置服务器地址与 token…」填写，存于浏览器本地
+- 油猴脚本**不含 token**：首次使用时在菜单「OCR 设置…」填写，存于浏览器本地
 - api_token 由系统自动生成，无需手动修改
 
 ---

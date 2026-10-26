@@ -216,6 +216,7 @@ $includeItems = @(
     "Start-OCR.bat",
     "Stop-OCR.bat",
     "Update-OCR.bat",
+    "Show-OCR-Info.bat",
     "README-FIRST.txt",
     "install.ps1",
     "requirements.txt",

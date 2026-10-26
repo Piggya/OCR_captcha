@@ -216,7 +216,7 @@ try {
     Copy-ProjectTree (Join-Path $srcRoot "docs") (Join-Path $root "docs")
 
     $rootFiles = @(
-        "Start-OCR.bat", "Stop-OCR.bat", "Update-OCR.bat", "README-FIRST.txt",
+        "Start-OCR.bat", "Stop-OCR.bat", "Update-OCR.bat", "Show-OCR-Info.bat", "README-FIRST.txt",
         "start_server.ps1", "start_server.bat", "install.ps1",
         "requirements.txt", "README.md", "LICENSE"
     )
