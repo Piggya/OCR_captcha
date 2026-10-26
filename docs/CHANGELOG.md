@@ -1,5 +1,10 @@
 # 开发日志
 
+## 0.9.3 (2026-10-23)
+- **变更**：油猴菜单「设置服务器地址与 token…」不再弹两个 `prompt()`，改为独立设置对话框：可填 URL/token、显示 token、测试 `/health`、保存；首次未配置时自动弹出同一对话框。Tampermonkey 管理面板不提供自定义入口 API，入口仍在油猴扩展菜单。
+- **修复**：配置探测只接受 `/health` 的 2xx 响应，避免错误地址返回 404 也被当成连接成功。
+- **说明**：从内网 `/userscript.user.js` 安装的脚本仍以服务端注入值为准；手动修改只在当前会话生效，下次更新会恢复服务端配置。
+
 ## 0.9.2 (2026-10-23)
 - **一键更新**：新增 `Update-OCR.bat` + `tools/update_ocr.ps1`。默认从 GitHub 下载最新源码，停止服务 → 备份 `server/config.json`、`server/`、`userscript/` 到 `backup-时间戳/` → 替换代码（**保留 `server/config.json` 和 `python/`**）→ 依赖变化时自动 `pip install` → 重启服务。内网无法访问 GitHub 时可用 `-SourceZip` 指定离线源码包。
 - **局域网分发**：明确其他设备只需 Tampermonkey + 打开 `http://<服务器IP>:1205/userscript.user.js`，无需下载便携包；服务端自动注入 URL/token。

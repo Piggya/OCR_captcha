@@ -2,7 +2,7 @@
 // @name         土著内网验证码识别
 // @icon         data:image/png;base64,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
 // @namespace    http://local-captcha-ocr.internal/
-// @version      0.9.2
+// @version      0.9.3
 // @description  Use an internal OCR service to recognize and fill captcha fields on every site.
 // @description:zh-CN  自托管内网验证码识别：OCR 自动识别并填入验证码。需自行部署服务端（GitHub 提供 Windows 便携包）。
 // @author       Piggya
@@ -25,6 +25,9 @@
 // ==/UserScript==
 
 // CHANGELOG (see docs/README.md):
+// 0.9.3  - Replaced the two prompt() boxes with a proper settings dialog
+//          (server URL + token, test connection, save). Opened from the
+//          Tampermonkey menu. No OCR behavior change.
 // 0.9.2  - Added Update-OCR.bat (one-click in-place update, preserves
 //          server/config.json and python/, backs up before replacing).
 //          Added GreasyFork-friendly metadata (@license, @homepageURL,
@@ -157,7 +160,7 @@
           url: normalizeServerUrl(serverUrl) + "/health",
           timeout: 3000,
           onload: (res) =>
-            res.status >= 200 && res.status < 500 ? resolve() : reject(),
+            res.status >= 200 && res.status < 300 ? resolve() : reject(),
           onerror: () => reject(),
           ontimeout: () => reject(),
         });
@@ -168,35 +171,242 @@
     }
   }
 
-  async function promptForServerConfig(force) {
-    if (!force && isConfigured()) return true;
-    const enteredUrl = prompt(
-      "OCR 服务器地址（例如 http://192.168.1.100:1205）",
-      effectiveServerUrl()
-    );
-    if (enteredUrl === null) return false;
-    const enteredToken = prompt(
-      "OCR 访问 token（向管理员索取）",
-      effectiveToken()
-    );
-    if (enteredToken === null) return false;
-    const serverUrl = normalizeServerUrl(enteredUrl);
-    const token = String(enteredToken).trim();
-    if (!serverUrl || !token) {
-      alert("服务器地址或 token 不能为空。");
-      return false;
-    }
-    if (!(await probeServer(serverUrl))) {
-      if (!confirm("无法连接该服务器（/health 无响应），仍要保存配置吗？")) {
-        return false;
+  // A proper settings dialog instead of two browser prompt() boxes.
+  // Opened from the Tampermonkey extension menu. Tampermonkey does not expose
+  // an API to add custom entries to its dashboard, so this is the closest
+  // supported integration.
+  function openServerConfigDialog(force) {
+    if (!force && isConfigured()) return Promise.resolve(true);
+    const old = document.getElementById("local-captcha-ocr-settings");
+    if (old) old.remove();
+
+    return new Promise((resolve) => {
+      let resolved = false;
+      let allowUnreachable = false;
+      const finish = (result) => {
+        if (resolved) return;
+        resolved = true;
+        overlay.remove();
+        resolve(result);
+      };
+
+      const overlay = document.createElement("div");
+      overlay.id = "local-captcha-ocr-settings";
+      overlay.setAttribute("role", "dialog");
+      overlay.setAttribute("aria-modal", "true");
+      overlay.setAttribute("aria-label", "OCR 服务器设置");
+      overlay.style.cssText = [
+        "position:fixed",
+        "inset:0",
+        "z-index:2147483647",
+        "display:flex",
+        "align-items:center",
+        "justify-content:center",
+        "padding:16px",
+        "box-sizing:border-box",
+        "background:rgba(0,0,0,.45)",
+        "font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif",
+        "color:#202124"
+      ].join(";");
+
+      const card = document.createElement("div");
+      card.style.cssText = [
+        "width:100%",
+        "max-width:440px",
+        "max-height:90vh",
+        "overflow:auto",
+        "box-sizing:border-box",
+        "background:#fff",
+        "border-radius:10px",
+        "box-shadow:0 12px 40px rgba(0,0,0,.35)",
+        "padding:18px 18px 14px"
+      ].join(";");
+      overlay.appendChild(card);
+
+      const title = document.createElement("div");
+      title.textContent = "OCR 服务器设置";
+      title.style.cssText = "font-size:18px;font-weight:600;margin:0 0 4px";
+      card.appendChild(title);
+
+      const intro = document.createElement("div");
+      intro.textContent = "填写内网 OCR 服务地址和 token。保存后立即生效，无需改脚本。";
+      intro.style.cssText = "color:#5f6368;margin:0 0 14px";
+      card.appendChild(intro);
+
+      if (hasInjectedConfig()) {
+        const injected = document.createElement("div");
+        injected.textContent = "当前地址和 token 由内网服务器注入；手动修改只在本次会话生效，下次脚本更新会恢复服务器配置。";
+        injected.style.cssText = [
+          "background:#fff7e0",
+          "border:1px solid #f0c36d",
+          "color:#6b4f00",
+          "border-radius:6px",
+          "padding:8px 10px",
+          "margin:0 0 12px"
+        ].join(";");
+        card.appendChild(injected);
       }
-    }
-    GM_setValue(CFG_SERVER_KEY, serverUrl);
-    GM_setValue(CFG_TOKEN_KEY, token);
-    CONFIG.serverUrl = serverUrl;
-    CONFIG.token = token;
-    notify("服务器配置已保存：" + serverUrl);
-    return true;
+
+      const field = (labelText, input) => {
+        const label = document.createElement("label");
+        label.textContent = labelText;
+        label.style.cssText = "display:block;font-weight:600;margin:10px 0 4px";
+        label.htmlFor = input.id;
+        card.appendChild(label);
+        input.style.cssText = [
+          "display:block",
+          "width:100%",
+          "box-sizing:border-box",
+          "padding:8px 10px",
+          "border:1px solid #dadce0",
+          "border-radius:6px",
+          "font:14px/1.4 Arial,sans-serif",
+          "color:#202124",
+          "background:#fff"
+        ].join(";");
+        card.appendChild(input);
+      };
+
+      const urlInput = document.createElement("input");
+      urlInput.id = "local-captcha-ocr-settings-url";
+      urlInput.type = "text";
+      urlInput.inputMode = "url";
+      urlInput.autocomplete = "off";
+      urlInput.spellcheck = false;
+      urlInput.placeholder = "http://192.168.1.100:1205";
+      urlInput.value = effectiveServerUrl();
+      field("服务器地址", urlInput);
+
+      const tokenInput = document.createElement("input");
+      tokenInput.id = "local-captcha-ocr-settings-token";
+      tokenInput.type = "password";
+      tokenInput.autocomplete = "off";
+      tokenInput.spellcheck = false;
+      tokenInput.placeholder = "server/config.json 中的 api_token";
+      tokenInput.value = effectiveToken();
+      field("访问 token", tokenInput);
+
+      const showWrap = document.createElement("label");
+      showWrap.style.cssText = "display:flex;align-items:center;gap:6px;margin:8px 0 0;color:#5f6368;cursor:pointer";
+      const showToken = document.createElement("input");
+      showToken.type = "checkbox";
+      showToken.style.cssText = "margin:0";
+      showToken.addEventListener("change", () => {
+        tokenInput.type = showToken.checked ? "text" : "password";
+      });
+      showWrap.appendChild(showToken);
+      showWrap.appendChild(document.createTextNode("显示 token"));
+      card.appendChild(showWrap);
+
+      const status = document.createElement("div");
+      status.setAttribute("role", "status");
+      status.style.cssText = "min-height:20px;margin:10px 0 0;font-size:13px;display:none";
+      card.appendChild(status);
+      const setStatus = (text, ok) => {
+        status.textContent = text || "";
+        status.style.display = text ? "block" : "none";
+        status.style.color = ok === true ? "#137333" : ok === false ? "#c5221f" : "#5f6368";
+      };
+
+      const actions = document.createElement("div");
+      actions.style.cssText = "display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap";
+      card.appendChild(actions);
+
+      const btn = (text, primary) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = text;
+        b.style.cssText = [
+          "border:0",
+          "border-radius:6px",
+          "padding:8px 14px",
+          "font:14px/1.4 Arial,sans-serif",
+          "cursor:pointer",
+          primary ? "background:#1a73e8" : "background:#f1f3f4",
+          primary ? "color:#fff" : "color:#202124"
+        ].join(";");
+        return b;
+      };
+
+      const cancelBtn = btn("取消", false);
+      const testBtn = btn("测试连接", false);
+      const saveBtn = btn("保存", true);
+      actions.appendChild(cancelBtn);
+      actions.appendChild(testBtn);
+      actions.appendChild(saveBtn);
+
+      const readValues = () => {
+        const serverUrl = normalizeServerUrl(urlInput.value);
+        const token = String(tokenInput.value || "").trim();
+        if (!serverUrl) {
+          setStatus("请填写服务器地址。", false);
+          return null;
+        }
+        if (!/^https?:\/\//i.test(serverUrl)) {
+          setStatus("服务器地址必须以 http:// 或 https:// 开头。", false);
+          return null;
+        }
+        if (!token) {
+          setStatus("请填写访问 token。", false);
+          return null;
+        }
+        return { serverUrl, token };
+      };
+
+      [urlInput, tokenInput].forEach((input) => {
+        input.addEventListener("input", () => {
+          allowUnreachable = false;
+          setStatus("", null);
+        });
+      });
+
+      testBtn.addEventListener("click", async () => {
+        allowUnreachable = false;
+        const serverUrl = normalizeServerUrl(urlInput.value);
+        if (!serverUrl || !/^https?:\/\//i.test(serverUrl)) {
+          setStatus("请先填写以 http:// 或 https:// 开头的服务器地址。", false);
+          return;
+        }
+        setStatus("正在连接 /health ...", null);
+        const ok = await probeServer(serverUrl);
+        setStatus(ok ? "连接成功，/health 正常。" : "无法连接 /health，请检查地址、防火墙和网段。", ok);
+      });
+
+      saveBtn.addEventListener("click", async () => {
+        const values = readValues();
+        if (!values) return;
+        setStatus("正在检查服务器...", null);
+        const ok = await probeServer(values.serverUrl);
+        if (!ok && !allowUnreachable) {
+          allowUnreachable = true;
+          setStatus("无法连接 /health。请检查地址、防火墙和网段；仍要保存请再点一次“保存”。", false);
+          return;
+        }
+        GM_setValue(CFG_SERVER_KEY, values.serverUrl);
+        GM_setValue(CFG_TOKEN_KEY, values.token);
+        CONFIG.serverUrl = values.serverUrl;
+        CONFIG.token = values.token;
+        notify("服务器配置已保存：" + values.serverUrl);
+        finish(true);
+      });
+
+      cancelBtn.addEventListener("click", () => finish(false));
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) finish(false);
+      });
+      overlay.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          finish(false);
+        } else if (event.key === "Enter" && (event.target === urlInput || event.target === tokenInput)) {
+          event.preventDefault();
+          saveBtn.click();
+        }
+      });
+
+      document.documentElement.appendChild(overlay);
+      window.setTimeout(() => urlInput.focus(), 0);
+    });
   }
 
   function showCurrentServer() {
@@ -911,7 +1121,7 @@
       // settings). Prevents the MutationObserver from spamming prompts.
       if (GM_getValue("ocr_prompted", false)) return;
       GM_setValue("ocr_prompted", true);
-      const configured = await promptForServerConfig(true);
+      const configured = await openServerConfigDialog(true);
       if (!configured) return;
     }
     const rule = getRule();
@@ -1083,7 +1293,7 @@
   GM_registerMenuCommand("删除本网站规则", clearUserRulesForHost);
   GM_registerMenuCommand("清空所有用户规则", clearAllUserRules);
   GM_registerMenuCommand("--- 服务器 ---", () => {});
-  GM_registerMenuCommand("设置服务器地址与 token…", () => promptForServerConfig(true));
+  GM_registerMenuCommand("设置服务器地址与 token…", () => openServerConfigDialog(true));
   GM_registerMenuCommand("查看当前服务器", showCurrentServer);
   GM_registerMenuCommand("从服务器更新脚本（内网）", openServerUserscript);
 
@@ -1094,7 +1304,7 @@
           // Ask once; the operator can always configure later from the menu.
           if (!GM_getValue("ocr_prompted", false)) {
             GM_setValue("ocr_prompted", true);
-            await promptForServerConfig(true);
+            await openServerConfigDialog(true);
           }
         }
         const rule = getRule();

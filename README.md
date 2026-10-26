@@ -91,7 +91,8 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 2. 打开 `http://<服务器IP>:1205/userscript.user.js` 安装
    - 或把仓库里的 `userscript/local-captcha-autofill.user.js` 直接拖进 Tampermonkey
 3. **从服务器地址安装时不需要任何手动配置**：服务端会把当前 URL + token 注入脚本
-   - 只有直接使用公开 GitHub 脚本时，才需要在菜单「**设置服务器地址与 token…**」填一次
+   - 只有直接使用公开 GitHub/GreasyFork 脚本时，才需要在油猴扩展菜单「**设置服务器地址与 token…**」打开设置对话框填一次
+   - Tampermonkey 管理面板不支持自定义入口，入口只能在扩展菜单里
 
 > 内网脚本地址包含 token，且只对 `allowed_clients` 中的 IP 返回；公开 GitHub 脚本保持无 token。两种安装方式保存的配置都在浏览器本地（`GM_setValue`），升级脚本不会丢失。
 
@@ -109,6 +110,8 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 **隔离内网**（无法访问 GitHub）：服务端同样托管了脚本，菜单「**从服务器更新脚本（内网）**」会打开 `http://<服务器IP>:1205/userscript.user.js`，由 Tampermonkey 完成更新。服务端返回的脚本会把 `@updateURL` / `@downloadURL` 改成自身地址，并重新注入当前 token，所以内网更新也能自动同步 token。
 
 **公开发布（GreasyFork）**：可把无 token 的公开脚本发布到 GreasyFork，方便搜索“内网验证码 OCR”。发布文案、分类、隐私说明见 [docs/GREASYFORK.md](docs/GREASYFORK.md)。服务端仍需用户自行部署；内网同事仍建议用服务器注入地址。
+
+> 仓库已配置 GreasyFork GitHub Webhook。**每次修改脚本并 push 前必须严格递增 `@version`**（同版本会被拒绝，用户收不到更新）；发布前运行 `tools\check_version_bump.ps1`。
 
 ## API
 

@@ -26,6 +26,64 @@
 3. `@match *://*/*`、`@connect *` 保持现状（全站自动填码 + 用户可配置任意内网服务器）。
 4. 仓库脚本仍是 `const INJECTED_CONFIG = null;`，无 token。
 5. GitHub Release 已发布，便携包可下载。
+6. `@version` **严格大于** GreasyFork 线上版本，并运行 `tools\check_version_bump.ps1` 通过。
+
+---
+
+## Webhook 自动同步（推荐，配置一次）
+
+仓库 `main` 已配置 GitHub Webhook；之后正常 `git push` 就会自动更新 GreasyFork，不需要再手动粘贴代码。
+
+> **硬性要求**：GreasyFork 只在 `userscript/` 文件发生变化且 `@version` **严格递增**时发布新版本。同版本重复 push 会被拒绝，用户也收不到更新。每次发布前必须运行：
+>
+> ```powershell
+> git fetch origin
+> powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\check_version_bump.ps1
+> ```
+>
+> `[FAIL]` 时禁止 push，先同时升 `server/app.py __version__` 和油猴 `// @version`。
+
+### 1. 设置脚本同步地址
+
+GreasyFork 脚本页 → 编辑 → 源代码同步（Source syncing）：
+
+```text
+https://raw.githubusercontent.com/Piggya/OCR_captcha/main/userscript/local-captcha-autofill.user.js
+```
+
+保存时选择 **Update and sync**。地址必须与 GitHub 实际文件路径完全一致。
+
+### 2. GreasyFork 生成 Webhook Secret
+
+登录后打开 `https://greasyfork.org/zh-CN/users/webhook-info`，复制页面给出的 **Payload URL**，点 **Generate** 生成 Secret。
+
+### 3. GitHub 添加 Webhook
+
+仓库 `Settings → Webhooks → Add webhook`：
+
+- **Payload URL**：GreasyFork 页面给出的地址
+- **Content type**：`application/json`
+- **Secret**：GreasyFork 生成的 Secret（只放在 GitHub/GreasyFork 设置里，**不要提交到仓库**）
+- **Which events**：`Just the push event`（推荐）
+- **Active**：勾选
+
+保存后 GitHub 会发 ping，GreasyFork 显示成功即可。
+
+### 4. 以后发布
+
+```powershell
+# 先升版本并跑检查
+powershell -File tools\check_version_bump.ps1
+git add -A
+git commit -m "vX.Y.Z: ..."
+git push
+```
+
+GitHub push → GreasyFork 拉取 raw 文件 → 自动发布新版本。
+
+不要再用 GreasyFork 的“更新脚本”手动粘贴；如果没更新，检查 GitHub Webhook 的 Recent Deliveries 和 GreasyFork 的同步错误。
+
+> 选 `Release` 事件时，同步地址要改成 `https://github.com/Piggya/OCR_captcha/releases/latest/download/local-captcha-autofill.user.js`，并且每次 Release 都要上传同名 `.user.js` 资产。当前 Release 只上传 `OCR-portable.zip`，所以用 **push 事件**最简单。
 
 ---
 
@@ -35,7 +93,7 @@
 |------|--------|
 | 脚本名称 | `土著内网验证码识别` |
 | 命名空间 | `http://local-captcha-ocr.internal/`（保持原值） |
-| 版本 | 与脚本 `@version` 一致，例如 `0.9.2` |
+| 版本 | 与脚本 `@version` 一致，例如 `0.9.3` |
 | 描述 | 用下面的「简介」 |
 | 分类 | `Productivity`（效率/生产力） |
 | 许可证 | `MIT` |
@@ -127,12 +185,14 @@ https://github.com/Piggya/OCR_captcha
 
 ## 后续更新 GreasyFork
 
-1. 本地升 `@version`、写 CHANGELOG、跑测试、推 GitHub
-2. 在 GreasyFork 脚本页点 **更新脚本**（Update script），粘贴新代码
-3. 确认 GreasyFork 显示的版本号递增
-4. 不要改 `@name` / `@namespace`，否则会变成新脚本，老用户收不到更新
+1. 同时升 `server/app.py __version__` 和油猴 `// @version`，写 CHANGELOG
+2. 跑测试，再运行 `tools\check_version_bump.ps1`，必须 `[OK]`
+3. `git commit` + `git push` 到 `main`
+4. GitHub Webhook 自动同步 GreasyFork；到脚本页确认 `@version` 已递增
+5. 只有 webhook 故障时才临时用 **更新脚本** 手动粘贴；修好后仍以 webhook 为准
+6. 不要改 `@name` / `@namespace`，否则会变成新脚本，老用户收不到更新
 
-> GreasyFork 的版本必须不小于当前版本；否则平台会拒绝更新。
+> **同版本重复 push 会被拒绝，用户也收不到更新。** 每次都必须严格递增 `@version`。
 
 ---
 

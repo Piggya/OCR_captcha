@@ -1,4 +1,4 @@
-# 土著内网验证码识别 v0.9.2
+# 土著内网验证码识别 v0.9.3
 
 公司内网用的纯本地验证码识别 + 自动填充方案。基于 FastAPI + ddddocr + Tampermonkey。
 
@@ -32,6 +32,7 @@ D:\OCR
 │  ├─ build_portable.ps1    # 构建便携包
 │  ├─ setup_new_server.ps1  # 新设备一键部署
 │  ├─ update_ocr.ps1        # 便携版原地更新（保留 config/python）
+│  ├─ check_version_bump.ps1 # 发布前校验 GreasyFork @version 递增
 │  └─ restart_server.ps1    # 重启服务
 ├─ docs/                    # 文档
 │  ├─ README.md             # 本文档 - 系统介绍
@@ -89,6 +90,8 @@ D:\OCR
 - 轮换 token 后升一次 `@version`。
 
 **公开发布**：GreasyFork 文案与步骤见 [GREASYFORK.md](GREASYFORK.md)。只能发布无 token 的公开脚本，服务端仍需用户自行部署。
+
+> 仓库已配置 GreasyFork GitHub Webhook。**每次改脚本并 push 前必须严格递增 `@version`**；发布前运行 `tools\check_version_bump.ps1`，`[FAIL]` 时禁止 push。
 
 ### 开发环境
 **前提**：Windows 10/11 + PowerShell 5.1+ + Python 3.10+
@@ -210,10 +213,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 - **为本网站添加规则...**：添加自定义 CSS 选择器
 - **查看本网站规则**：查看当前网站已保存的规则
 - **删除本网站规则**：删除当前网站的规则
-- **设置服务器地址与 token…**：首次使用或更换服务器时填写（存浏览器本地）
+- **设置服务器地址与 token…**：打开设置对话框，填写 URL/token、显示 token、测试 `/health`、保存（存浏览器本地）
 - **查看当前服务器**：显示当前 Server URL
 - **从服务器更新脚本（内网）**：隔离内网时从 `http://<服务器IP>:1205/userscript.user.js` 更新
 
+> 入口在 Tampermonkey **扩展菜单**（页面右上角油猴图标）里；Tampermonkey 管理面板没有开放自定义入口 API，脚本无法往面板里加按钮。
+>
 > 公开脚本不含 token。从内网地址安装时，服务端会把 `@updateURL` 指向服务器并注入 URL/token；从 GitHub/GreasyFork 安装时按各自渠道更新。轮换 token 后请升一次 `@version`。
 
 ### 验证码规则字段

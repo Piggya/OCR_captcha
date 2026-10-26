@@ -21,7 +21,7 @@ from .ocr_engine import (
     decode_image_data,
 )
 
-__version__ = "0.9.2"
+__version__ = "0.9.3"
 
 
 BASE_DIR = Path(__file__).resolve().parent
