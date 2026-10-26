@@ -13,9 +13,9 @@
 ③ 新机器解压到 E:\OCR                           → 本地目录，不要在网络共享里运行
 ④ 双击 Start-OCR.bat                            → UAC 点“是”，自动完成全部配置
    （等价命令：powershell -File tools\setup_new_server.ps1 -NonInteractive）
-⑤ 把窗口显示（已复制到剪贴板）的脚本地址发给同事
+⑤ 把窗口显示（已复制到剪贴板）的脚本地址发给局域网内的其他设备
    http://<新机器IP>:1205/userscript.user.js
-   → 同事打开安装即可，无需填 URL/token
+   → 这些设备打开安装即可，无需填 URL/token
 ⑥ 需要地址+token 时双击 Show-OCR-Info.bat
    → 服务器地址、API token、安装地址已复制到剪贴板
 ```
@@ -90,7 +90,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup_new_server.ps1
 7. 启动 uvicorn 服务
 8. 健康检查
 
-看到 `Setup Complete!` 和 `Health check: OK` 表示成功。结尾会打印脚本地址并复制到剪贴板，直接发给同事即可；服务端会在脚本里注入 URL 和 token。
+看到 `Setup Complete!` 和 `Health check: OK` 表示成功。结尾会打印脚本地址并复制到剪贴板，直接发给局域网内的设备即可；服务端会在脚本里注入 URL 和 token。
 
 ### 如果没有管理员权限
 
@@ -106,36 +106,36 @@ powercfg /change hibernate-timeout-ac 0
 
 ## 阶段四：安装油猴脚本
 
-### 本机 + 同事
+### 本机 + 局域网内设备
 
 1. 浏览器安装 Tampermonkey 扩展
 2. 打开 `http://<服务器IP>:1205/userscript.user.js`，Tampermonkey 会提示安装
-   - 隔离内网也可直接把 `userscript\local-captcha-autofill.user.js` 拖入 Tampermonkey
+   - 无法访问 GitHub 时，也可直接把 `userscript\local-captcha-autofill.user.js` 拖入 Tampermonkey
 3. 安装完成即可使用：服务端已经把服务器地址和 token 注入脚本，**不需要填**
    - 注入值优先于浏览器本地存储；服务器换 IP 或轮换 token 后，升一次脚本版本即可自动同步
-4. 只有手动安装公开 GitHub 脚本时，才需要菜单「OCR 设置…」
-5. 重配/查看：菜单「OCR 设置…」
+4. 只有手动安装公开 GitHub 脚本时，才需要菜单「OCR 服务器设置…」
+5. 重配/查看：菜单「OCR 服务器设置…」
 6. 服务器上双击 `Show-OCR-Info.bat` 可显示并复制“服务器地址 + token + 安装地址”
 
-> 内网脚本地址包含 token，只对 `allowed_clients` 中的 IP 返回，不要发到公网。
-> 更新方式：能上外网时脚本按 `@updateURL` 自动更新；隔离内网用菜单「从内网服务器更新…」。
+> 局域网脚本地址包含 token，只对 `allowed_clients` 中的 IP 返回，不要发到公网。
+> 更新方式：能上外网时脚本按 `@updateURL` 自动更新；无法访问 GitHub 时用菜单「从 OCR 服务器更新脚本…」。
 
 ### 局域网其他电脑（不装服务端）
 
 其他电脑**不需要**解压 `OCR-portable.zip`，也**不需要** Python。只需：
 
-1. 能访问服务器的 1205 端口（同一内网；防火墙已由服务器端放行）
+1. 能访问服务器的 1205 端口（同一局域网；防火墙已由服务器端放行）
 2. 浏览器安装 Tampermonkey
 3. 打开 `http://<服务器IP>:1205/userscript.user.js` 并安装
 
 安装后 Tampermonkey 的更新地址会指向该服务器；服务器升级 `@version` 后即可检查更新。
-如果同事之前从公开 GitHub 安装，建议重开一次内网地址并点“更新”，切换到服务器托管更新。
+如果这些设备之前从公开 GitHub 安装，建议重新打开一次安装地址并点“更新”，切换到服务器托管更新。
 
 ---
 
 ## 阶段五：验证
 
-1. 打开需要识别验证码的网页（如公司 OA 登录页）
+1. 打开需要识别验证码的网页（如局域网业务系统登录页）
 2. 右下角应弹出"正在本地识别验证码..."
 3. 1-2 秒后弹出"验证码已填入: xxxx"
 4. 验证码输入框自动填入
@@ -158,13 +158,13 @@ Get-NetTCPConnection -LocalPort 1205 -State Listen | ForEach-Object { Stop-Proce
 
 ### 保留备用
 
-保持旧服务运行，同事脚本已指向新机器。如果新机器故障，可临时切回旧机器。
+保持旧服务运行，局域网设备上的脚本已指向新机器。如果新机器故障，可临时切回旧机器。
 
 ---
 
 ## 跨网络部署（ZeroTier）
 
-如果新设备和同事不在同一局域网（如不同网段、分公司、家里），需要用内网穿透工具。
+如果新设备和这些设备不在同一局域网（如不同网段、分公司、家里），需要使用局域网穿透工具。
 
 **服务端操作：**
 1. 安装 ZeroTier，加入网络
@@ -187,9 +187,9 @@ Get-NetTCPConnection -LocalPort 1205 -State Listen | ForEach-Object { Stop-Proce
 ```powershell
 Get-Content D:\OCR\server\config.json | ConvertFrom-Json | Select-Object -ExpandProperty api_token
 ```
-从内网地址安装的脚本带服务端注入的 token；公开 GitHub 脚本不含 token（存在浏览器本地）。
-若轮换了服务端 token：重启服务后，升一次脚本 `@version` 让内网脚本自动更新；或让同事重新打开 `http://<服务器IP>:1205/userscript.user.js` 安装一次。
-如果同事是手动安装的公开脚本，则在菜单「OCR 设置…」里改成新 token。
+从局域网地址安装的脚本带服务端注入的 token；公开 GitHub 脚本不含 token（存在浏览器本地）。
+若轮换了服务端 token：重启服务后，升一次脚本 `@version` 让局域网脚本自动更新；或让局域网设备重新打开 `http://<服务器IP>:1205/userscript.user.js` 安装一次。
+如果局域网设备是手动安装的公开脚本，则在菜单「OCR 服务器设置…」里改成新 token。
 
 ### OCR 请求超时
 ```powershell
@@ -229,7 +229,7 @@ Get-Content D:\OCR\server.err.log -Tail 20
 
 更新流程：下载最新源码 → 停止 1205 服务 → 备份 `server/config.json`、`server/`、`userscript/` 到 `backup-<时间戳>/` → 替换代码（**保留 `server/config.json` 和 `python/`**）→ 依赖有变化时 `pip install` → 调用 `setup_new_server.ps1 -NonInteractive` 重启并健康检查。
 
-**内网无法访问 GitHub**：在能上网的机器下载
+**局域网无法访问 GitHub**：在能上网的机器下载
 `https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip`，
 拷到服务器后以管理员运行：
 
@@ -242,8 +242,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\update_ocr.ps1 -Source
 
 > 从 0.9.1 及更早版本升级时，旧目录里还没有 `Update-OCR.bat`：把新版中的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制到旧目录后再双击；或解压完整新包，把旧 `server\config.json` 复制过去。
 
-> 不要删 `server/config.json`，否则会生成新 token，所有同事都会 401。
-> 更新后同事脚本按 `@version` 自动更新；轮换 token 时必须升一次 `@version`，或让同事重开内网脚本地址安装。
+> 不要删 `server/config.json`，否则会生成新 token，所有局域网设备都会 401。
+> 更新后局域网设备上的脚本按 `@version` 自动更新；轮换 token 时必须升一次 `@version`，或让局域网设备重新打开安装地址安装。
 
 ---
 
@@ -259,7 +259,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\update_ocr.ps1 -Source
 | 停止服务 | 双击 `Stop-OCR.bat` |
 | 检查健康 | 浏览器打开 `http://127.0.0.1:1205/health` |
 | 查看日志 | `Get-Content server.err.log -Tail 20` |
-| IP 变了 | 重跑 `Start-OCR.bat`，把新脚本地址发给同事（旧地址会失效） |
+| IP 变了 | 重跑 `Start-OCR.bat`，把新脚本地址发给局域网内的设备（旧地址会失效） |
 
 ### 开机自启
 

@@ -96,7 +96,7 @@ Write-Host "土著内网验证码识别 is starting..."
 Write-Host ("  Server URL (current machine): http://{0}:{1}" -f $lanIp, $port)
 Write-Host ("  Server URL (work LAN IP):    {0}" -f $serverUrl)
 Write-Host ""
-Write-Host "  同事脚本配置（油猴菜单『设置服务器地址与 token…』）：" -ForegroundColor Yellow
+Write-Host "  局域网设备脚本配置（油猴菜单『OCR 服务器设置…』）：" -ForegroundColor Yellow
 Write-Host ("    Server URL : {0}" -f $serverUrl) -ForegroundColor Yellow
 Write-Host ("    API token  : {0}" -f $config.api_token) -ForegroundColor Yellow
 Write-Host ("  安装/更新脚本: {0}" -f $userscriptUrl) -ForegroundColor Yellow

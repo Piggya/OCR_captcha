@@ -67,9 +67,12 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 }
 
 $baseText = $null
+$previousEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 try {
     $baseText = (git -C $Root show ("{0}:{1}" -f $BaseRef, $userscriptRel) 2>$null) -join "`n"
 } catch { }
+$ErrorActionPreference = $previousEap
 if (-not $baseText) {
     Write-Host ("[WARN] Cannot read {0}:{1}; skipping bump check (fetch first for a strict check)." -f $BaseRef, $userscriptRel) -ForegroundColor Yellow
     exit 0
@@ -80,7 +83,10 @@ if (-not $baseVersion) {
     exit 1
 }
 
+$previousEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 $changed = @(git -C $Root diff --name-only $BaseRef -- userscript server 2>$null | Where-Object { $_ })
+$ErrorActionPreference = $previousEap
 if ($changed.Count -eq 0) {
     Write-Host ("[OK] No userscript/server changes vs {0}; no version bump required." -f $BaseRef) -ForegroundColor Green
     Write-Host ("     Version: {0}" -f $currentVersion) -ForegroundColor DarkGray

@@ -26,7 +26,7 @@ foreach ($f in $files) {
 ```
 
 > 只要 `@version` 递增，Tampermonkey 便会从 `@updateURL` 自动拉取新版本。
-> 隔离内网无法访问 GitHub 时，用脚本菜单「从服务器更新脚本（内网）」。
+> 无法访问 GitHub 时，用脚本菜单「从 OCR 服务器更新脚本…」（只更新脚本，不更新服务端）。
 
 ## 2. 用“干净历史”发布（重要）
 
@@ -49,7 +49,7 @@ git push -u origin public:main
 ## 3. 发布后
 
 - GitHub 仓库主页会直接显示根目录 `README.md`
-- 同事安装：`http://<服务器IP>:1205/userscript.user.js`，再在菜单填写 Server URL + token
+- 局域网设备安装：打开 `http://<服务器IP>:1205/userscript.user.js` 即可，服务端会自动注入 Server URL + token，无需手动填写
 - 外网用户安装：`https://raw.githubusercontent.com/<用户>/<仓库>/main/userscript/local-captcha-autofill.user.js`
 
 ## 4. 后续发版流程
@@ -71,6 +71,6 @@ git push -u origin public:main
 
 ## 5. 安全提醒
 
-- 永远不要把 `server/config.json`、真实 token、内网 IP 提交到公开仓库
-- 内网部署也建议定期轮换 token
+- 永远不要把 `server/config.json`、真实 token、局域网 IP 提交到公开仓库
+- 局域网部署也建议定期轮换 token
 - 不要把 1205 端口暴露到公网

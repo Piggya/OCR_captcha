@@ -21,7 +21,7 @@ from .ocr_engine import (
     decode_image_data,
 )
 
-__version__ = "0.9.4"
+__version__ = "0.9.5"
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -223,7 +223,7 @@ def userscript(request: Request) -> Response:
     LAN clients install the script straight from the OCR server, so the
     script body gets ``INJECTED_CONFIG`` (server URL + API token) and its
     ``@updateURL``/``@downloadURL`` point back here. That removes the manual
-    "set server URL and token" step for colleagues.
+    "set server URL and token" step for LAN devices.
 
     Because the rendered script contains the token, this endpoint is limited
     to ``allowed_clients`` (the same IP allowlist used by ``/recognize``).

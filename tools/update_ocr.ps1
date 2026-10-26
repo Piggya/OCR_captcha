@@ -260,7 +260,7 @@ try {
     Write-Host (" Update complete: " + $oldVersion + " -> " + $newVersion) -ForegroundColor Green
     Write-Host "============================================================" -ForegroundColor Green
     Write-Host ("  Backup: " + $backup) -ForegroundColor White
-    Write-Host "  Colleagues: Tampermonkey will pick up the new @version." -ForegroundColor White
+    Write-Host "  LAN devices: Tampermonkey will pick up the new @version." -ForegroundColor White
     Write-Host "  If their script was installed from GitHub, ask them to open" -ForegroundColor DarkGray
     Write-Host "  http://<server-ip>:$port/userscript.user.js once to switch to LAN updates." -ForegroundColor DarkGray
     Write-Host ""

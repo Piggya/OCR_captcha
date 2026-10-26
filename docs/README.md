@@ -1,6 +1,6 @@
-# 土著内网验证码识别 v0.9.4
+# 土著内网验证码识别 v0.9.5
 
-公司内网用的纯本地验证码识别 + 自动填充方案。基于 FastAPI + ddddocr + Tampermonkey。
+公司局域网用的纯本地验证码识别 + 自动填充方案。基于 FastAPI + ddddocr + Tampermonkey。
 
 ---
 
@@ -8,7 +8,7 @@
 
 ```
 ┌─────────────────────────┐     ┌─────────────────────────┐
-│   服务端（你的电脑）      │     │   客户端（同事浏览器）    │
+│   服务端（你的电脑）      │     │    客户端（局域网）              │
 │                         │     │                         │
 │  FastAPI + ddddocr      │ ◄── │  Tampermonkey 油猴脚本   │
 │  监听 0.0.0.0:1205      │     │  GM_xmlhttpRequest 调用  │
@@ -53,7 +53,7 @@ D:\OCR
 
 ## 功能特性
 
-- **纯本地运行**：所有 OCR 计算在服务端完成，数据不出公司内网
+- **纯本地运行**：所有 OCR 计算在服务端完成，数据不出公司局域网
 - **自动识别填充**：页面加载后自动识别验证码，填入输入框
 - **多框架兼容**：支持原生 HTML、Element UI、iView 等常见框架
 - **双模型投票**：两个 ddddocr 模型同时识别，结果一致时可信度最高
@@ -68,12 +68,12 @@ D:\OCR
 
 ## 快速开始
 
-### 便携版（推荐给新机器/同事）
+### 便携版（推荐给新机器/局域网内其他设备）
 1. 下载并解压 `OCR-portable.zip` 到本地目录
 2. 双击 `Start-OCR.bat`，UAC 点“是”
 3. 把窗口里显示（且已复制到剪贴板）的
-   `http://<服务器IP>:1205/userscript.user.js` 发给同事
-4. 同事装好 Tampermonkey 后打开该地址安装即可，**无需填写 URL/token**
+   `http://<服务器IP>:1205/userscript.user.js` 发给局域网内的其他设备
+4. 这些设备装好 Tampermonkey 后打开该地址安装即可，**无需填写 URL/token**
 5. 以后查看/复制完整连接信息：双击 `Show-OCR-Info.bat`（服务器地址 + token + 安装地址，自动进剪贴板）
 
 > 局域网其他电脑**不需要**下载 zip 或安装 Python，只需能访问服务器的 1205 端口 + Tampermonkey。
@@ -82,14 +82,14 @@ D:\OCR
 
 **服务端**
 - 能访问 GitHub：双击 `Update-OCR.bat`（自动提权）。保留 `server/config.json` 和 `python/`，更新前备份到 `backup-<时间戳>/`。
-- 内网离线：下载 [main.zip](https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip)，拷贝后运行
+- 局域网离线：下载 [main.zip](https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip)，拷贝后运行
   `powershell -File tools\update_ocr.ps1 -SourceZip "C:\path\main.zip"`。
 - 不要删除 `server/config.json`，否则 token 会重新生成。
 - 从 0.9.1 及更早版本升级：旧包没有 `Update-OCR.bat`，需把新版里的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制进去，或解压完整新包后复制旧 `server/config.json`。
 
-**同事脚本**
-- 内网安装：Tampermonkey 管理面板 →「检查用户脚本更新」，或菜单「从内网服务器更新…」。
-- GitHub/GreasyFork 安装：按各自渠道更新；建议重开一次内网地址切换到服务器托管更新。
+**局域网设备脚本**
+- 局域网安装：Tampermonkey 管理面板 →「检查用户脚本更新」，或菜单「从 OCR 服务器更新脚本…」。
+- GitHub/GreasyFork 安装：按各自渠道更新；建议重开一次局域网地址切换到服务器托管更新。
 - 轮换 token 后升一次 `@version`。
 
 **公开发布**：GreasyFork 文案与步骤见 [GREASYFORK.md](GREASYFORK.md)。只能发布无 token 的公开脚本，服务端仍需用户自行部署。
@@ -106,10 +106,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 `start_server.ps1` 自动完成：
-1. 探测本机内网 IP
+1. 探测本机局域网 IP
 2. 生成配置和随机 api_token
 3. 启动 uvicorn 服务
-4. 打印同事所需的脚本地址（token 由服务端自动注入）
+4. 打印局域网设备所需的脚本地址（token 由服务端自动注入）
 
 打开 `http://<服务器IP>:1205/userscript.user.js` 安装脚本即可，脚本内的服务器地址和 token 由服务端注入，不需要手动填写。公开 GitHub 上的脚本不含 token，安装后才需要手动配置。
 
@@ -122,8 +122,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 
 ### 集中部署（推荐）
 - 你的电脑作为服务端，7×24 在线
-- 同事只需装 Tampermonkey + 打开内网脚本地址，不需要 Python，也不需要填 URL/token
-- 内网脚本地址只对 `allowed_clients` 中的 IP 提供，并且包含 token，不要发到公网
+- 局域网设备只需装 Tampermonkey + 打开局域网脚本地址，不需要 Python，也不需要填 URL/token
+- 局域网脚本地址只对 `allowed_clients` 中的 IP 提供，并且包含 token，不要发到公网
 - 新设备部署详见 [DEPLOY.md](DEPLOY.md)
 
 ---
@@ -145,7 +145,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 
 请求体：
 ```json
-{ "image": "data:image/png;base64,...", "kind": "text", "site": "oa.company.local" }
+{ "image": "data:image/png;base64,...", "kind": "text", "site": "app.company.local" }
 ```
 
 响应：
@@ -179,7 +179,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 | 字段 | 默认 | 说明 |
 |------|------|------|
 | `api_token` | 自动生成 24 字节 | 客户端请求鉴权 |
-| `work_lan_ip` | 探测到的 LAN IP | 启动脚本打印给同事的服务器 IP（留空则自动探测） |
+| `work_lan_ip` | 探测到的 LAN IP | 启动脚本打印给局域网设备的服务器 IP（留空则自动探测） |
 | `bind_host` | `0.0.0.0` | 监听地址 |
 | `port` | `1205` | 服务端口 |
 | `allowed_clients` | 见 config.json | IP 白名单（支持 CIDR） |
@@ -195,7 +195,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 1. 安装 Tampermonkey 扩展（Edge / Chrome / Firefox 应用商店搜索）
 2. **推荐**：直接打开 `http://<服务器IP>:1205/userscript.user.js` 安装（自动注入 URL/token）
 3. 或打开油猴管理面板 → 实用工具 → 从文件导入 → 选择 `.user.js` 文件（需手动配置）
-4. 打开公司 OA 登录页，右下角自动弹出识别状态
+4. 打开局域网业务系统登录页，右下角自动弹出识别状态
 
 ### 识别结果标签
 
@@ -211,13 +211,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 油猴菜单已精简为 5 项：
 - **识别并填码**：手动触发一次识别
 - **刷新后识别**：点击验证码刷新按钮后识别
-- **OCR 设置…**：打开设置对话框，填写 URL/token、显示 token、测试 `/health`、保存（存浏览器本地）
+- **OCR 服务器设置…**：打开设置对话框，填写 URL/token、显示 token、测试 `/health`、保存（存浏览器本地）
 - **高级功能…**：打开二级对话框，包含大小写切换、重置断路器、站点规则的添加/查看/删除/清空
-- **从内网服务器更新…**：隔离内网时从 `http://<服务器IP>:1205/userscript.user.js` 更新
+- **从 OCR 服务器更新脚本…**：打开 `http://<服务器IP>:1205/userscript.user.js`，让 Tampermonkey 检查/重装脚本；无法访问 GitHub 时使用。**它只更新脚本，不更新服务端程序**；服务端升级用 `Update-OCR.bat`。
 
 > 入口在 Tampermonkey **扩展菜单**（页面右上角油猴图标）里；Tampermonkey 管理面板没有开放自定义入口 API，脚本无法往面板里加按钮。
 >
-> 公开脚本不含 token。从内网地址安装时，服务端会把 `@updateURL` 指向服务器并注入 URL/token；从 GitHub/GreasyFork 安装时按各自渠道更新。轮换 token 后请升一次 `@version`。
+> 公开脚本不含 token。从局域网地址安装时，服务端会把 `@updateURL` 指向服务器并注入 URL/token；从 GitHub/GreasyFork 安装时按各自渠道更新。轮换 token 后请升一次 `@version`。
 
 ### 验证码规则字段
 
@@ -227,13 +227,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 | `minConfidence` | 单字符置信度门限，低于此值不自动填入（默认 0.55） |
 | `maxAttempts` | 失败重试次数 |
 | `charset` | 允许的字符正则集合，如 `0-9a-zA-Z` |
-| `letterCase` | 结果大小写：`upper` / `lower` / `preserve`（默认 `upper`，因 ddddocr 输出小写而 OA 为大写） |
+| `letterCase` | 结果大小写：`upper` / `lower` / `preserve`（默认 `upper`，因 ddddocr 输出小写，而部分业务系统的验证码为大写） |
 | `uppercase` / `lowercase` | 旧字段，仍兼容；新规则建议用 `letterCase` |
 | `imageSelector` / `inputSelector` | 验证码图片 / 输入框 CSS 选择器 |
 
-### 自定义规则（换 OA 系统时）
+### 自定义规则（默认选择器不匹配时）
 
-如果新 OA 的验证码不在默认选择器里：
+如果目标网站的验证码不在默认选择器里：
 
 **方法一（推荐）**：油猴菜单 → "为本网站添加规则..." → 依次输入验证码图片和输入框的 CSS 选择器
 
@@ -265,7 +265,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 - 服务端不要暴露到公网（路由器不要做 1205 端口转发）
 - 建议将油猴脚本的 `host` 从 `"*"` 改为公司具体域名
 - `server/config.json` 含敏感 token，不要提交到代码仓库（已被 `.gitignore` 忽略）
-- 油猴脚本**不含 token**：首次使用时在菜单「OCR 设置…」填写，存于浏览器本地
+- 油猴脚本**不含 token**：首次使用时在菜单「OCR 服务器设置…」填写，存于浏览器本地
 - api_token 由系统自动生成，无需手动修改
 
 ---

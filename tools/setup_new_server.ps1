@@ -5,7 +5,7 @@
 #   1. Verifies the portable Python is present
 #   2. Detects the LAN IP
 #   3. Configures config.json (work_lan_ip + real api_token auto-gen)
-#   4. Generates userscripts (local + colleagues)
+#   4. Generates userscripts (local + LAN devices)
 #   5. Opens the configured firewall port (default 1205)
 #   6. Sets power policy (sleep = never, so the service stays up)
 #   7. Starts the OCR service
@@ -16,7 +16,7 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\setup_new_server.ps1 -NonInteractive
 #
 # -NonInteractive accepts the detected LAN IP without prompting. Start-OCR.bat
-# uses it so a colleague only has to double-click and approve the UAC prompt.
+# uses it so a LAN device only has to double-click and approve the UAC prompt.
 #
 # If not running as admin, the script will still configure config + start the
 # service, but will skip firewall and power settings with a warning.
@@ -312,7 +312,7 @@ Write-Host ""
 Write-Host "  Userscript: http://${lanIp}:$port/userscript.user.js" -ForegroundColor Yellow
 Write-Host "    -> Install this URL in Tampermonkey (no file copy needed)" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "  Colleagues: open the userscript URL above in a browser with Tampermonkey." -ForegroundColor Yellow
+Write-Host "  LAN devices: open the userscript URL above in a browser with Tampermonkey." -ForegroundColor Yellow
 Write-Host "    The server URL and token are injected automatically - no manual setup." -ForegroundColor Yellow
 Write-Host ("       API token (admin/reference only): {0}" -f $config.api_token) -ForegroundColor DarkGray
 Write-Host "  (The public GitHub script stays token-free; only this LAN URL embeds it.)" -ForegroundColor DarkGray

@@ -1,14 +1,14 @@
 ﻿r"""End-to-end browser test using Playwright + Edge.
 
 This is a real end-to-end test: it launches a headless Edge browser, loads a
-mock OA page (served by a local static server), injects the actual generated
+mock login page (served by a local static server), injects the actual generated
 userscript, and verifies that the captcha input gets filled with the OCR result.
 
 NOTE on CORS:
   The real userscript uses GM_xmlhttpRequest which bypasses CORS. This test
   polyfills GM_xmlhttpRequest with plain `fetch`, which IS subject to CORS.
   We pass --disable-web-security to Edge so the test can hit the OCR service
-  running on <服务器内网 IP>:1205. This flag has NO EFFECT on real users using
+  running on <服务器局域网 IP>:1205. This flag has NO EFFECT on real users using
   the actual Tampermonkey extension.
 
 Prerequisites:
@@ -82,7 +82,7 @@ def main():
         print("[2] injecting GM polyfill as init script")
         page.add_init_script(GM_POLYFILL)
 
-        print(f"[3] loading mock OA page: {MOCK_URL}")
+        print(f"[3] loading mock login page: {MOCK_URL}")
         page.goto(MOCK_URL, wait_until="networkidle")
         print(f"  page title: {page.title()!r}")
 

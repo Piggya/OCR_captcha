@@ -5,7 +5,7 @@
 #
 # Run by double-clicking Show-OCR-Info.bat on the server machine. No admin
 # rights required. The token is sensitive: only share the output with LAN
-# colleagues, never post it publicly.
+# LAN devices, never post it publicly.
 # -----------------------------------------------------------------------------
 
 param(
@@ -84,42 +84,42 @@ $serverUrl = "http://${lanIp}:$port"
 $userscriptUrl = "$serverUrl/userscript.user.js"
 
 $message = @"
-【验证码识别 - 内网连接信息】
+【验证码识别 - 局域网连接信息】
 服务器地址：$serverUrl
 API token：$token
-同事安装地址：$userscriptUrl
+安装地址：$userscriptUrl
 
-推荐给同事发“同事安装地址”：
+推荐把“安装地址”发给局域网设备：
 1. 浏览器安装 Tampermonkey
 2. 打开上面的安装地址，点安装
 3. 不需要手动填服务器地址和 token
 
 需要手动配置时：
-油猴图标菜单 →「OCR 设置…」→ 填上面的服务器地址和 token
+油猴图标菜单 →「OCR 服务器设置…」→ 填上面的服务器地址和 token
 
-只发给内网成员，不要发到公网。
+只发给局域网内的设备，不要发到公网。
 "@
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
-Write-Host " OCR 连接信息（只发给内网同事）" -ForegroundColor Green
+Write-Host " OCR 连接信息（只发给局域网内的设备）" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host ("  服务器地址: " + $serverUrl) -ForegroundColor White
 Write-Host ("  API token : " + $token) -ForegroundColor Yellow
-Write-Host ("  同事安装  : " + $userscriptUrl) -ForegroundColor Cyan
+Write-Host ("  安装地址  : " + $userscriptUrl) -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  手动配置入口：油猴图标菜单 →「OCR 设置…」" -ForegroundColor DarkGray
+Write-Host "  手动配置入口：油猴图标菜单 →「OCR 服务器设置…」" -ForegroundColor DarkGray
 Write-Host ""
 
 if (-not $NoClipboard) {
     try {
         Set-Clipboard -Value $message
-        Write-Host "已把完整连接信息复制到剪贴板，可直接粘贴到内网群。" -ForegroundColor Green
+        Write-Host "已把完整连接信息复制到剪贴板，可直接粘贴到局域网群聊。" -ForegroundColor Green
     } catch {
         Write-Host ("[WARNING] 复制到剪贴板失败: " + $_.Exception.Message) -ForegroundColor Yellow
     }
 }
 
-Write-Host "提示：token 等同于访问密码，只发给内网成员；不要截图发到公网。" -ForegroundColor DarkYellow
+Write-Host "提示：token 等同于访问密码，只发给局域网内的设备；不要截图发到公网。" -ForegroundColor DarkYellow
 Write-Host ""

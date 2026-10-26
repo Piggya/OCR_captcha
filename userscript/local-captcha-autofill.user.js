@@ -2,9 +2,9 @@
 // @name         土著内网验证码识别
 // @icon         data:image/png;base64,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
 // @namespace    http://local-captcha-ocr.internal/
-// @version      0.9.4
-// @description  Use an internal OCR service to recognize and fill captcha fields on every site.
-// @description:zh-CN  自托管内网验证码识别：OCR 自动识别并填入验证码。需自行部署服务端（GitHub 提供 Windows 便携包）。
+// @version      0.9.5
+// @description  Use a LAN OCR service to recognize and fill captcha fields on every site.
+// @description:zh-CN  自托管局域网验证码识别：OCR 自动识别并填入验证码。需自行部署服务端（GitHub 提供 Windows 便携包）。
 // @author       Piggya
 // @license      MIT
 // @homepageURL  https://github.com/Piggya/OCR_captcha
@@ -25,6 +25,9 @@
 // ==/UserScript==
 
 // CHANGELOG (see docs/README.md):
+// 0.9.5  - Wording cleanup: use LAN / LAN devices / business systems
+//          consistently. Menu item renamed to "OCR 服务器设置" and
+//          "从 OCR 服务器更新脚本" (script only, not the server).
 // 0.9.4  - Shortened the Tampermonkey menu to five items; site rules, case
 //          switching and breaker reset moved into a "高级功能" dialog.
 //          Added Show-OCR-Info.bat (server URL + token + install URL,
@@ -38,7 +41,7 @@
 //          @supportURL, @source, @description:zh-CN). No OCR behavior change.
 // 0.9.1  - LAN auto-config: when installed from the OCR server, the server
 //          injects the URL + token and points @updateURL/@downloadURL back at
-//          itself, so colleagues do not type either value. The public GitHub
+//          itself, so LAN devices do not type either value. The public GitHub
 //          copy stays token-free. Added one-click portable launchers.
 // 0.9.0  - Public-release model: no token/server URL is embedded. Configure
 //          once via the menu (stored in GM storage). Added @updateURL /
@@ -57,7 +60,7 @@
 // 0.8.3  - Server-side release: /recognize adds time_ms; new tools/benchmark.py
 //          accuracy + latency report; Swagger UI at /docs. No userscript logic
 //          change; version aligned with the server.
-// 0.8.2  - P17: local + colleague scripts merged into one. Auto-detects
+// 0.8.2  - P17: local + LAN device scripts merged into one. Auto-detects
 //          the OCR server (local dev vs office production) on first run
 //          and caches the choice in GM_setValue. Menu commands let you
 //          switch between profiles at any time.
@@ -102,7 +105,7 @@
   "use strict";
 
   // Public release: NO token or server URL is baked in. The operator enters
-  // them once (menu "设置服务器地址与 token…") and they are stored in GM
+  // them once (menu "OCR 服务器设置…") and they are stored in GM
   // storage, so the same script works for any deployment and can be
   // auto-updated without exposing secrets.
   //
@@ -233,13 +236,13 @@
       card.appendChild(title);
 
       const intro = document.createElement("div");
-      intro.textContent = "填写内网 OCR 服务地址和 token。保存后立即生效，无需改脚本。";
+      intro.textContent = "填写局域网 OCR 服务地址和 token。保存后立即生效，无需改脚本。";
       intro.style.cssText = "color:#5f6368;margin:0 0 14px";
       card.appendChild(intro);
 
       if (hasInjectedConfig()) {
         const injected = document.createElement("div");
-        injected.textContent = "当前地址和 token 由内网服务器注入；手动修改只在本次会话生效，下次脚本更新会恢复服务器配置。";
+        injected.textContent = "当前地址和 token 由局域网服务器注入；手动修改只在本次会话生效，下次脚本更新会恢复服务器配置。";
         injected.style.cssText = [
           "background:#fff7e0",
           "border:1px solid #f0c36d",
@@ -437,8 +440,8 @@
       {
         host: "*",
         // SECURITY WARNING: host:"*" makes the script attempt OCR on every website.
-        // Change host to your company domain (e.g. "oa.company.local") to limit
-        // it to just your OA, or use GM_registerMenuCommand → "为本网站添加规则..."
+        // Change host to your company domain (e.g. "app.company.local") to limit
+        // it to just your site, or use GM_registerMenuCommand → "为本网站添加规则..."
         // to persist a per-host override in browser storage.
         imageSelector: [
           "img.captcha",
@@ -525,7 +528,7 @@
         // P8: any character below this confidence is treated as suspect
         // and not auto-filled. Set to 0 to always trust the engine result.
         minConfidence: 0.55,
-        // ddddocr emits lowercase letters, but this OA's captcha is shown in
+        // ddddocr emits lowercase letters, but this site's captcha is shown in
         // uppercase and validated case-sensitively. Apply case client-side.
         // Toggle per-site from the Tampermonkey menu if a site differs.
         letterCase: "upper",
@@ -1416,9 +1419,9 @@
 
   GM_registerMenuCommand("识别并填码", recognizeAndFill);
   GM_registerMenuCommand("刷新后识别", refreshAndRecognize);
-  GM_registerMenuCommand("OCR 设置…", () => openServerConfigDialog(true));
+  GM_registerMenuCommand("OCR 服务器设置…", () => openServerConfigDialog(true));
   GM_registerMenuCommand("高级功能…", openAdvancedDialog);
-  GM_registerMenuCommand("从内网服务器更新…", openServerUserscript);
+  GM_registerMenuCommand("从 OCR 服务器更新脚本…", openServerUserscript);
 
   if (CONFIG.autoRun) {
     const boot = () => {

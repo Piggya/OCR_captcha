@@ -1,11 +1,11 @@
 # 土著内网验证码识别
 
-内网自托管的验证码 OCR 服务 + Tampermonkey 油猴脚本。服务端用 [ddddocr](https://github.com/sml2h3/ddddocr) 识别验证码，浏览器脚本自动填入验证码输入框，适合 10~40 人的局域网 OA / 内部系统。
+局域网自托管的验证码 OCR 服务 + Tampermonkey 油猴脚本。服务端用 [ddddocr](https://github.com/sml2h3/ddddocr) 识别验证码，浏览器脚本自动填入验证码输入框，适合 10~40 人使用的局域网业务系统/ 内部系统。
 
 - 服务端：FastAPI + ddddocr（双模型投票 + 置信度门控 + LRU 缓存）
 - 客户端：Tampermonkey 用户脚本，自动发现验证码图片/输入框
 - 部署：Windows，支持便携版 Python，也可用普通 Python 虚拟环境
-- **无需外网**；脚本可在线更新（GitHub 或内网服务器）
+- **无需外网**；脚本可在线更新（GitHub 或局域网服务器）
 
 ## 功能
 
@@ -13,7 +13,7 @@
 - 双模型投票、逐字符置信度门限、失败重试与断路器
 - 图片指纹缓存（同图直接返回，延迟约 1~3ms）
 - 大小写可配置（ddddocr 输出小写，可统一转大写或按站点切换）
-- 内网鉴权（token）+ IP 白名单 + 请求体大小限制
+- 局域网鉴权（token）+ IP 白名单 + 请求体大小限制
 - 调试图片分桶保存（可选）
 - 准确率/延迟测试工具 `tools/benchmark.py`
 
@@ -33,8 +33,8 @@ FastAPI (uvicorn :1205)
 
 1. 下载 [`OCR-portable.zip`](https://github.com/Piggya/OCR_captcha/releases/latest/download/OCR-portable.zip)
 2. 解压到本地目录，双击 `Start-OCR.bat`，UAC 点“是”
-3. 把窗口显示（已复制到剪贴板）的 `http://<本机IP>:1205/userscript.user.js` 发给同事
-4. 同事装 Tampermonkey 后打开该地址安装，**无需填 URL/token**
+3. 把窗口显示（已复制到剪贴板）的 `http://<本机IP>:1205/userscript.user.js` 发给局域网内的其他设备
+4. 这些设备装 Tampermonkey 后打开该地址安装，**无需填 URL/token**
 
 > 局域网其他电脑不需要下载便携包或安装 Python，只要能访问服务器的 1205 端口，并有 Tampermonkey 即可。
 >
@@ -56,7 +56,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\start_server.ps1
 1. 从 `server/config.example.json` 生成 `server/config.json`
 2. 自动生成随机 `api_token`
 3. 启动 uvicorn：`http://0.0.0.0:1205`（Ctrl+C 停止）
-4. 在控制台打印**同事所需的 Server URL 和 token**
+4. 在控制台打印**局域网设备所需的 Server URL 和 token**
 
 健康检查：
 
@@ -69,23 +69,23 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 
 在已配置好的机器上运行 `tools/build_portable.ps1` 生成 `OCR-portable.zip`，拷到新机器解压后**双击 `Start-OCR.bat`** 即可（自动提权、生成 token、开防火墙、后台启动）。详见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
-启动后如需查看/复制服务器地址、token 和同事安装地址，双击 **`Show-OCR-Info.bat`**，完整信息会自动进剪贴板。
+启动后如需查看/复制服务器地址、token 和安装地址，双击 **`Show-OCR-Info.bat`**，完整信息会自动进剪贴板。
 
 ## 更新
 
 **服务端**
 - 能访问 GitHub：双击 `Update-OCR.bat`（自动提权）。它会下载最新源码，保留 `server/config.json` 和 `python/`，更新前备份到 `backup-时间戳/`，更新后自动重启。
-- 内网无法访问 GitHub：在能上网的机器下载 [源码 zip](https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip)，拷过来后以管理员运行：
+- 局域网无法访问 GitHub：在能上网的机器下载 [源码 zip](https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip)，拷过来后以管理员运行：
   ```powershell
   powershell -ExecutionPolicy Bypass -File tools\update_ocr.ps1 -SourceZip "C:\path\main.zip"
   ```
 - **不要删 `server/config.json`**，否则会生成新 token。
 - 从 0.9.1 及更早版本升级：旧包没有 `Update-OCR.bat`，需把新版里的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制进去，或解压完整新包后复制旧 `server/config.json`。
 
-**同事脚本**
-- 内网安装：Tampermonkey 管理面板 →「检查用户脚本更新」（`@updateURL` 指向服务器），或脚本菜单「从内网服务器更新…」。
-- GitHub 安装：从 GitHub 更新；建议重开一次内网脚本地址并点“更新”，之后切换到服务器托管更新。
-- 轮换 token：升一次 `@version`，客户端自动拉取；否则让同事重开内网地址安装一次。
+**局域网设备脚本**
+- 局域网安装：Tampermonkey 管理面板 →「检查用户脚本更新」（`@updateURL` 指向服务器），或脚本菜单「从 OCR 服务器更新脚本…」。
+- GitHub 安装：从 GitHub 更新；建议重开一次局域网脚本地址并点“更新”，之后切换到服务器托管更新。
+- 轮换 token：升一次 `@version`，客户端自动拉取；否则让局域网设备重新打开安装地址安装一次。
 
 ## 安装油猴脚本
 
@@ -93,10 +93,10 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 2. 打开 `http://<服务器IP>:1205/userscript.user.js` 安装
    - 或把仓库里的 `userscript/local-captcha-autofill.user.js` 直接拖进 Tampermonkey
 3. **从服务器地址安装时不需要任何手动配置**：服务端会把当前 URL + token 注入脚本
-   - 只有直接使用公开 GitHub/GreasyFork 脚本时，才需要在油猴扩展菜单「**OCR 设置…**」打开设置对话框填一次
+   - 只有直接使用公开 GitHub/GreasyFork 脚本时，才需要在油猴扩展菜单「**OCR 服务器设置…**」打开设置对话框填一次
    - Tampermonkey 管理面板不支持自定义入口，入口只能在扩展菜单里
 
-> 内网脚本地址包含 token，且只对 `allowed_clients` 中的 IP 返回；公开 GitHub 脚本保持无 token。两种安装方式保存的配置都在浏览器本地（`GM_setValue`），升级脚本不会丢失。
+> 局域网脚本地址包含 token，且只对 `allowed_clients` 中的 IP 返回；公开 GitHub 脚本保持无 token。两种安装方式保存的配置都在浏览器本地（`GM_setValue`），升级脚本不会丢失。
 
 ## 在线更新
 
@@ -109,9 +109,9 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 
 脚本头已指向本仓库。发布后，`@version` 变大时 Tampermonkey 会自动拉取（也可手动“检查用户脚本更新”）。
 
-**隔离内网**（无法访问 GitHub）：服务端同样托管了脚本，菜单「**从内网服务器更新…**」会打开 `http://<服务器IP>:1205/userscript.user.js`，由 Tampermonkey 完成更新。服务端返回的脚本会把 `@updateURL` / `@downloadURL` 改成自身地址，并重新注入当前 token，所以内网更新也能自动同步 token。
+**无法访问 GitHub 时**：服务端同样托管了脚本。菜单「**从 OCR 服务器更新脚本…**」会打开 `http://<服务器IP>:1205/userscript.user.js`，由 Tampermonkey 检查/重装脚本。它只更新脚本，不更新服务端程序；服务端升级用 `Update-OCR.bat`。服务端返回的脚本会把 `@updateURL` / `@downloadURL` 改成自身地址，并重新注入当前 token，所以更新后也能自动同步 token。
 
-**公开发布（GreasyFork）**：可把无 token 的公开脚本发布到 GreasyFork，方便搜索“内网验证码 OCR”。发布文案、分类、隐私说明见 [docs/GREASYFORK.md](docs/GREASYFORK.md)。服务端仍需用户自行部署；内网同事仍建议用服务器注入地址。
+**公开发布（GreasyFork）**：可把无 token 的公开脚本发布到 GreasyFork，方便搜索“局域网验证码 OCR”。发布文案、分类、隐私说明见 [docs/GREASYFORK.md](docs/GREASYFORK.md)。服务端仍需用户自行部署；局域网内的设备仍建议使用服务器注入地址。
 
 > 仓库已配置 GreasyFork GitHub Webhook。**每次修改脚本并 push 前必须严格递增 `@version`**（同版本会被拒绝，用户收不到更新）；发布前运行 `tools\check_version_bump.ps1`。
 
@@ -127,7 +127,7 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 
 ```json
 // 请求
-{ "image": "data:image/png;base64,...", "kind": "text", "site": "oa.company.local" }
+{ "image": "data:image/png;base64,...", "kind": "text", "site": "app.company.local" }
 // 响应
 { "ok": true, "text": "A8K3", "engine": "ddddocr-dual", "confidence": 0.99, "cached": false, "time_ms": 54.3 }
 ```
@@ -154,8 +154,8 @@ README-FIRST.txt 便携版给使用者的说明
 
 - `server/config.json`（含真实 token）已被 `.gitignore` 忽略，**不要提交**
 - 公开的油猴脚本不含 token；token 只存在于服务器配置和用户浏览器本地
-- 内网 `/userscript.user.js` 会注入 token，只对 `allowed_clients` 中的 IP 返回；该地址不要发到公网
-- 默认只监听内网：`allowed_clients` 白名单 + `trust_proxy=false`
+- 局域网 `/userscript.user.js` 会注入 token，只对 `allowed_clients` 中的 IP 返回；该地址不要发到公网
+- 默认只监听局域网：`allowed_clients` 白名单 + `trust_proxy=false`
 - 不要把 1205 端口映射到公网
 
 ## 常见问题
