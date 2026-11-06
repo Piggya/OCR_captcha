@@ -1,13 +1,14 @@
 ﻿#requires -Version 5.1
 <#
   First-time setup for a fresh clone: create .venv and install dependencies.
-  Run this once, then run .\start_server.ps1.
+  Run this once, then run tools\start_server.ps1.
 
   Usage:
-      powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
+      powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\install.ps1
 #>
 $ErrorActionPreference = "Stop"
-$root = $PSScriptRoot
+# This script lives in tools\; the install root is one level up.
+$root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 function Get-PythonCommand {
     foreach ($name in @("python3", "python")) {
@@ -40,4 +41,4 @@ if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed." }
 
 Write-Host ""
 Write-Host "Install complete." -ForegroundColor Green
-Write-Host "Next: .\start_server.ps1   (creates server\config.json + token on first run)" -ForegroundColor Yellow
+Write-Host "Next: .\tools\start_server.ps1   (creates server\config.json + token on first run)" -ForegroundColor Yellow

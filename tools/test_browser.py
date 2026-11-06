@@ -19,7 +19,7 @@ Prerequisites:
       python tools\mock_oa_server.py   (run this in another terminal)
 
 Usage:
-  & .\.venv\Scripts\python.exe tools\test_browser.py
+  python tools\test_browser.py
 """
 import os
 import time

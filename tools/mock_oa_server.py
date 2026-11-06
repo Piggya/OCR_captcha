@@ -3,7 +3,7 @@
 Serves <repo>\tools\test-assets\ on http://127.0.0.1:8001
 
 Usage (run in a separate terminal):
-  & <repo>\.venv\Scripts\python.exe <repo>\tools\mock_oa_server.py
+  python tools\mock_oa_server.py
 
 Stop with Ctrl+C.
 """

@@ -17,11 +17,11 @@ are supported:
 
 By default it scans tools/test-assets for files matching captcha-<answer>.png.
 
-Usage:
-    & D:\OCR\.venv\Scripts\python.exe D:\OCR\tools\benchmark.py
-    & D:\OCR\.venv\Scripts\python.exe D:\OCR\tools\benchmark.py --dir D:\captchas
-    & D:\OCR\.venv\Scripts\python.exe D:\OCR\tools\benchmark.py --repeat 5 --warmup 2
-    & D:\OCR\.venv\Scripts\python.exe D:\OCR\tools\benchmark.py --report report.html
+Usage (run from the repo root):
+    python tools\benchmark.py
+    python tools\benchmark.py --dir C:\captchas
+    python tools\benchmark.py --repeat 5 --warmup 2
+    python tools\benchmark.py --report report.html
 
 Exit code: 0 if the service was reachable and ran, 1 otherwise. Accuracy is
 reported but does not fail the process (accuracy is informational).

@@ -29,36 +29,11 @@ docs/TEST-REPORT-*.md
 tools/test-assets/benchmark-report.html
 tools/test-assets/result*.png
 tools/test-assets/edge-profile/
-__diag*.txt
-__e2e_*.py
-__mock.err
-__body_*.txt
-__patch_*.py
-__write_*.py
-__add_*.py
-__cleanup_*.py
-__rewrite_*.py
-__fix_*.py
-__bump_*.py
-__gen_*.ps1
-__gen_only.ps1
-__static*.py
-__static*.err
-__restart*.ps1
-__start*.ps1
-__old_*.txt
-__p5*.py
-__simulated.js
-__show*.js
-__validate.js
-__check.js
-__concurrency.py
-__gen_test_captcha.py
-__toggle.py
-__probe*.py
-__config_*.py
-__bump_ver.py
-__stress.py
+
+# Agent scratch files (see AGENTS.md section 1: delete these, do not hoard them)
+__*
+tmp/
+scratch/
 
 # IDE
 .vscode/

@@ -1,7 +1,7 @@
 ﻿r"""End-to-end smoke test for the local captcha OCR service.
 
 Usage:
-    & .\.venv\Scripts\python.exe tools\test_e2e.py
+    python tools\test_e2e.py
     # add `--trust-proxy` to also exercise the XFF=on path
     # add `--round-b` to also test trust_proxy=true behavior (requires a config edit + restart)
 
@@ -101,11 +101,104 @@ def main():
     )
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # v0.11.0 moved the launchers into launchers\ and start_server/install
+    # into tools\; the root keeps only OCR-Panel.bat as a forwarder.
     updater_ok = (
-        os.path.isfile(os.path.join(root, "Update-OCR.bat"))
+        os.path.isfile(os.path.join(root, "launchers", "Update-OCR.bat"))
         and os.path.isfile(os.path.join(root, "tools", "update_ocr.ps1"))
     )
     check("portable updater present", updater_ok, True)
+    panel_ok = all(
+        os.path.isfile(os.path.join(root, rel))
+        for rel in (
+            "OCR-Panel.bat",
+            os.path.join("launchers", "OCR-Panel.bat"),
+            os.path.join("tools", "panel.ps1"),
+            os.path.join("tools", "start_service_bg.ps1"),
+        )
+    )
+    check("control panel present", panel_ok, True)
+    silent_ok = (
+        os.path.isfile(os.path.join(root, "tools", "panel_launch.vbs"))
+        and os.path.isfile(os.path.join(root, "assets", "ocr-panel.ico"))
+        and "panel_launch.vbs"
+        in open(os.path.join(root, "launchers", "OCR-Panel.bat"), "r", encoding="utf-8").read()
+    )
+    check("control panel silent launch + icon", silent_ok, True)
+
+    # v0.11.0: the visible entry point is a .lnk, because a .bat can never carry
+    # a custom icon. It targets wscript.exe + the VBS directly (no cmd window
+    # flash) and is machine-specific, so it is rebuilt locally, not shipped.
+    # Note: .lnk strings mix narrow ASCII (ASCII part of the item ID list,
+    # written in the shell's ANSI codepage) with UTF-16LE (LinkInfo, string
+    # data), so check both encodings.
+    shortcut_ok = True
+    shortcut_detail = ""
+    try:
+        import struct
+
+        lnk = os.path.join(root, "OCR 控制面板.lnk")
+        data = open(lnk, "rb").read()
+        magic = struct.unpack_from("<I", data, 0)[0] == 0x0000004C
+        # .lnk strings mix narrow ASCII (ANSI item ID list) with UTF-16LE
+        # (LinkInfo / string data). Search the raw bytes for both forms.
+        raw = data.lower()
+
+        def has(token):
+            wide = b"".join(bytes((c, 0)) for c in token)
+            return token in raw or wide in raw
+
+        magic = struct.unpack_from("<I", data, 0)[0] == 0x0000004C
+        has_icon = has(b"ocr-panel.ico")
+        has_vbs = has(b"panel_launch.vbs")
+        has_wscript = has(b"wscript.exe")
+        # Must not point at a .bat (that would flash a console and lose the icon).
+        points_at_bat = has(b".bat")
+        shortcut_ok = magic and has_icon and has_vbs and has_wscript and not points_at_bat
+        shortcut_detail = "magic=%s icon=%s vbs=%s wscript=%s bat=%s" % (
+            magic, has_icon, has_vbs, has_wscript, points_at_bat)
+    except Exception as exc:  # noqa: BLE001 - report as a failed check
+        shortcut_ok = False
+        shortcut_detail = repr(exc)
+    check("launcher shortcut with logo icon", shortcut_ok, True, shortcut_detail)
+
+    # The source artwork lives in assets/ and is what make_icon.ps1 renders.
+    art_ok = all(
+        os.path.isfile(os.path.join(root, "assets", name))
+        for name in ("logo.png", "ocr-logo.png", "ocr-panel.ico")
+    )
+    icon_tool = open(os.path.join(root, "tools", "make_icon.ps1"), "r", encoding="utf-8-sig").read()
+    # make_icon.ps1 must write every size as a real 32bpp DIB payload.
+    # GDI+ (Explorer / WinForms / System.Drawing.Icon) cannot decode PNG entries,
+    # which is what corrupted 48px+ in 0.10.x.
+    dib_ok = "ConvertTo-IconDib" in icon_tool and "ImageFormat]::Png" not in icon_tool
+    check(
+        "icon built from assets/logo.png",
+        art_ok and r"assets\logo.png" in icon_tool and dib_ok,
+        True,
+        "art=%s dib=%s" % (art_ok, dib_ok),
+    )
+
+    # setup/update/panel must all be able to (re)create the shortcut.
+    hook_ok = all(
+        "make_shortcut.ps1" in open(os.path.join(root, "tools", name), "r", encoding="utf-8-sig").read()
+        for name in ("setup_new_server.ps1", "update_ocr.ps1", "panel.ps1")
+    )
+    check("shortcut recreated on install/update/panel", hook_ok, True)
+    panel_text = open(os.path.join(root, "tools", "panel.ps1"), "r", encoding="utf-8-sig").read()
+    panel_ok = (
+        # Closing the panel must never stop the service; only the button does.
+        "Get-ListenerPid" in panel_text
+        and "FormClosing" in panel_text
+        and "Stop-Process" in panel_text
+        and "Invoke-Schtasks" in panel_text
+    )
+    check("control panel keep-service-on-close", panel_ok, True)
+    info_ok = all(
+        marker in panel_text
+        for marker in ("txtInstall", "txtToken", "Get-ShareMessage", "Copy-Text", "Get-ServiceState")
+    )
+    check("control panel shows url+token+state", info_ok, True)
     metadata_ok = all(tag in repo_text for tag in (
         "// @license      MIT",
         "// @homepageURL  https://github.com/Piggya/OCR_captcha",

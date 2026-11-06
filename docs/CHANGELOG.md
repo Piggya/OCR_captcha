@@ -1,5 +1,37 @@
 # 开发日志
 
+## 0.11.0 (2026-11-05)
+- **变更**：脚本整理——面向用户的 `.bat` 入口全部移入 `launchers/`（`Start-OCR.bat`、`Stop-OCR.bat`、`Update-OCR.bat`、`Show-OCR-Info.bat`、`start_server.bat`、`OCR-Panel.bat`），`install.ps1`、`start_server.ps1` 移入 `tools/`。安装目录根下只剩 `OCR-Panel.bat`、`README-FIRST.txt`、`requirements.txt` 等少量文件。
+- **兼容**：根目录保留 `OCR-Panel.bat` 作转发入口，老用户双击习惯不变；所有 `.bat` 用 `cd /d "%~dp0.."` 回到根目录，`tools/*.ps1` 用 `Join-Path $PSScriptRoot ".."` 推断根目录。
+- **修复**：更新脚本现在会单独同步 `launchers/` 并备份旧入口，且**只有确认新版入口已就位才删除根目录旧 `.bat`**——旧版 updater 不认识 `launchers/`，直接删会导致升级后没有启动脚本可用。
+- **新增**：面板「检查更新」按钮有完整反馈——连接 GitHub 时显示进度条与当前步骤，已是最新版时弹窗「已是最新版本」并显示绿色提示，发现新版本先确认再更新，更新过程按 `[PROGRESS]` 阶段显示百分比（下载 / 解压 / 停止服务 / 备份 / 复制 / 重启），失败时红色提示 + 弹窗并保留日志。
+- **修复**：更新按钮原先在事件块里读脚本级变量，与 `New-StyleButton` 的参数同名冲突，已改为 `*Ref` 快照。
+- **修复**：面板「检查更新」一直报「连不上 GitHub」——`Get-OnlineVersion` 用 `foreach ($args in ...)` 当循环变量，而 `$args` 是 PowerShell 自动变量，赋值会被丢弃，导致请求参数变成 `@($null)` 直接抛错。已改名 `$attempt`，并改为**依次尝试直连 / 7890 / 1080 代理**，同时比对 `server/app.py __version__` 与油猴 `@version` 取较大值（只改客户端脚本的版本也能检出）。
+- **修复**：进度条与状态行不显示——`Set-UpdateUi` / `Set-UpdateProgress` 在函数里直接写 `$updateBar`，函数作用域看不到脚本级变量，已统一加 `$script:` 前缀；服务卡片加高到 148，窗口 860x894。
+- **新增**：安装目录根下生成 **`OCR 控制面板.lnk`（带 Logo 图标）**，双击即可打开面板。`.bat` 的图标由系统固定，无法自定义（双击批处理只显示 cmd/脚本的默认图标），所以入口改为快捷方式；它直接调用 `wscript.exe //nologo tools\panel_launch.vbs`，不经过 `cmd.exe`，因此仍然不闪窗口、保留静默 UAC 提权。生成工具为新增的 `tools/make_shortcut.ps1`（支持 `-Desktop` 另建桌面副本、`-Quiet` 静默）。
+- **变更**：快捷方式里是绝对路径，因此**不打进 zip**，而是在解压/安装/更新/打开面板时自动重建（`setup_new_server.ps1`、`update_ocr.ps1`、`panel.ps1` 都会调用 `make_shortcut.ps1`）。
+- **修复**：`assets/ocr-panel.ico` 在 48px 及以上显示为噪点——旧实现把 PNG 数据配上 32bpp DIB 头写进 ICO，而 GDI+（Explorer / WinForms）不解码 PNG 压缩条目。`tools/make_icon.ps1` 改为**全部尺寸都写真正的 32bpp DIB**（16/24/32/48/64/128/256），并改为从高清 `assets/logo.png` 生成，各尺寸均清晰。
+- **新增**：`assets/logo.png`（500x500 高清 Logo，图标源）与 `assets/ocr-logo.png`（32x32 原始 Logo）。
+
+## 0.10.2 (2026-11-05)
+- **美化**：控制面板改为自绘样式——深色头部 + 状态胶囊（绿/黄/红圆点 + 大字）、白色圆角卡片分区（服务状态 / 快捷操作 / 连接信息 / 服务控制 / 服务日志），按钮改为圆角药丸样式（主按钮蓝色、停止按钮红色描边），输入框套圆角底色。新增 `tools/ui_kit.ps1` 存放自绘控件与配色，面板只依赖 PowerShel​l，不引入第三方库。
+- **变更**：把「更新服务端」「首次配置/修复」「刷新」等按钮重新分组；「开机自启」改为服务控制卡片里带说明的复选框，一眼能看出是否开启。
+- **修复**：`Update-Status` 在函数作用域里看不到控件变量，导致状态卡与连接信息不刷新；改为把控件挂在 `$form.Tag` 上，并补回随状态变色的窗口图标。状态刷新出错时会写入面板日志，不再被静默吞掉。
+
+## 0.10.1 (2026-11-04)
+- **新增**：面板顶部状态徽标（🟢运行中 / 🟡启动中 / 🔴已停止）；运行中要求「端口在监听 + `/health` 返回 200」，不再只看端口。
+- **新增**：面板直接完整显示「安装地址 / 服务器地址 / API token」，每行带独立「复制」按钮，并支持「一键复制全部（含说明）」；不用再点按钮或看脚本才知道地址和 token。
+- **新增**：`assets/ocr-panel.ico`（绿圆 + OCR，7 种尺寸）作为 `OCR-Panel.bat` 的图标；窗口/任务栏图标随服务状态变色（运行中=绿，已停止=灰底红点）。缺失时自动用 `tools/make_icon.ps1` 重建。
+- **变更**：面板改为**全程静默启动**，不再出现黑色命令行窗口；启动链改为 `OCR-Panel.bat` → `tools/panel_launch.vbs`（`wscript.exe` + `runas` 提权），只弹一次 UAC。新增 `tools/panel_launch.ps1` 作为有错误弹窗的后备入口。
+- **修正**：面板内 `schtasks` 调用失败会中断面板的问题（统一走 `Invoke-Schtasks`）；改用 `tools/start_service_bg.ps1` 启动，避免每次启动都改配置。
+
+## 0.10.0 (2026-10-26)
+- **新增**：Windows 控制面板 `OCR-Panel.bat`（`tools/panel.ps1`，PowerShell + WinForms，零额外依赖）：状态/版本/局域网地址/安装地址一览，启停与重启服务、首次配置修复、更新服务端、复制连接信息、打开安装地址、查看日志。
+- **新增**：面板内「开机自启」开关（任务计划，默认关闭）；自启任务调用新的 `tools/start_service_bg.ps1`，只启动服务、不改配置、不弹 UAC。
+- **新增**：油猴菜单「切换本站识别（开/关）」，按 hostname 记忆；关闭后该站不再自动识别、不点刷新、不弹配置框，重新开启会立即识别一次。
+- **约定**：关闭控制面板**不会**停止服务；需要停止请点面板上的「停止服务」。
+- **文档**：新增 `docs/PANEL.md`（控制面板与启动方式评估与路径）；`README-FIRST.txt` 增加“用哪个脚本”对照表。
+
 ## 0.9.5 (2026-10-26)
 - **文案统一**：界面和文档统一使用“局域网”“局域网设备”“业务系统”，不再使用旧称呼；`Show-OCR-Info.bat`、部署指南、GreasyFork 文案同步更新。
 - **菜单重命名**：设置项改为 `OCR 服务器设置…`；服务器更新项改为 `从 OCR 服务器更新脚本…`，明确它只更新油猴脚本，不更新服务端程序（服务端升级仍用 `Update-OCR.bat`）。

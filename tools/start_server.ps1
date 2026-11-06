@@ -1,16 +1,19 @@
 ﻿$ErrorActionPreference = "Stop"
 
-$python = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+# This script lives in tools\; the install root is one level up.
+$root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+
+$python = Join-Path $root ".venv\Scripts\python.exe"
 if (-not (Test-Path $python)) {
-    $python = Join-Path $PSScriptRoot "python\python.exe"
+    $python = Join-Path $root "python\python.exe"
 }
 if (-not (Test-Path $python)) {
     $python = "python"
 }
 
-$configPath = Join-Path $PSScriptRoot "server\config.json"
+$configPath = Join-Path $root "server\config.json"
 if (-not (Test-Path $configPath)) {
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot "server\config.example.json") -Destination $configPath
+    Copy-Item -LiteralPath (Join-Path $root "server\config.example.json") -Destination $configPath
 }
 
 $config = Get-Content -LiteralPath $configPath -Encoding UTF8 | ConvertFrom-Json
@@ -103,7 +106,7 @@ Write-Host ("  安装/更新脚本: {0}" -f $userscriptUrl) -ForegroundColor Yel
 Write-Host ""
 Write-Host ("启动 uvicorn: http://{0}:{1}  (Ctrl+C 停止)" -f $bindHost, $port)
 
-Push-Location $PSScriptRoot
+Push-Location $root
 try {
     & $python -m uvicorn server.app:app --host $bindHost --port $port
 }

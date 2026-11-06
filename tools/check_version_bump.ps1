@@ -57,7 +57,7 @@ if (-not $serverVersion) {
 }
 if ($serverVersion -ne $currentVersion) {
     Write-Host ("[FAIL] Version mismatch: server/app.py={0}, userscript={1}" -f $serverVersion, $currentVersion) -ForegroundColor Red
-    Write-Host "       Both must be identical (see AGENTS.md section 6)." -ForegroundColor Yellow
+    Write-Host "       Both must be identical (see docs/CHANGELOG.md for the version rules)." -ForegroundColor Yellow
     exit 1
 }
 

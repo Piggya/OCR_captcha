@@ -1,4 +1,4 @@
-# GreasyFork 发布指南
+﻿# GreasyFork 发布指南
 
 ## 结论
 
@@ -93,7 +93,7 @@ GitHub push → GreasyFork 拉取 raw 文件 → 自动发布新版本。
 |------|--------|
 | 脚本名称 | `土著内网验证码识别` |
 | 命名空间 | `http://local-captcha-ocr.internal/`（保持原值） |
-| 版本 | 与脚本 `@version` 一致，例如 `0.9.5` |
+| 版本 | 与脚本 `@version` 一致，例如 `0.10.1` |
 | 描述 | 用下面的「简介」 |
 | 分类 | `Productivity`（效率/生产力） |
 | 许可证 | `MIT` |

@@ -211,19 +211,21 @@ $includeItems = @(
     "userscript",
     "tools",
     "docs",
-    "start_server.ps1",
-    "start_server.bat",
-    "Start-OCR.bat",
-    "Stop-OCR.bat",
-    "Update-OCR.bat",
-    "Show-OCR-Info.bat",
+    "assets",
+    "launchers",
+    "OCR-Panel.bat",
     "README-FIRST.txt",
-    "install.ps1",
     "requirements.txt",
     "README.md",
     "LICENSE",
     ".gitignore"
 )
+
+# The shortcut is machine-specific (it embeds an absolute path), so it is
+# NOT shipped in the zip. The target machine creates it on first run through
+# tools\make_shortcut.ps1 (setup_new_server.ps1, update_ocr.ps1 and the panel
+# itself all call it). This is only used by the sanity check below.
+$generatedOnExtract = @("OCR 控制面板.lnk")
 
 # Exclude patterns within included dirs
 $excludePatterns = @(
@@ -265,8 +267,30 @@ if (Test-Path $gitignore) {
     Copy-Item -LiteralPath $gitignore -Destination (Join-Path $staging ".gitignore") -Force
 }
 
+# Sanity check: the shortcut must not slip into the package (it would carry a
+# path from the build machine), and the pieces needed to recreate it must.
+foreach ($stale in $generatedOnExtract) {
+    $p = Join-Path $staging $stale
+    if (Test-Path -LiteralPath $p) {
+        Remove-Item -LiteralPath $p -Force
+        Write-Host "      [DROP] $stale (machine-specific, recreated on install)"
+    }
+}
+foreach ($need in @("tools\make_shortcut.ps1", "tools\panel_launch.vbs", "assets\ocr-panel.ico", "assets\logo.png")) {
+    if (-not (Test-Path -LiteralPath (Join-Path $staging $need))) {
+        Write-Host ("      [WARNING] missing from package: " + $need) -ForegroundColor Yellow
+    }
+}
+
 # Create the zip
 Compress-Archive -Path (Join-Path $staging "*") -DestinationPath $zipPath -CompressionLevel Optimal
+
+# Refresh the root shortcut so the developer's copy always has a valid one.
+$mkShortcut = Join-Path $root "tools\make_shortcut.ps1"
+if (Test-Path -LiteralPath $mkShortcut) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $mkShortcut | Out-Null
+    Write-Host "      shortcut refreshed: OCR 控制面板.lnk"
+}
 
 # Clean up staging
 Remove-Item -Recurse -Force $staging -ErrorAction SilentlyContinue
@@ -282,6 +306,6 @@ Write-Host ""
 Write-Host "  Next steps:" -ForegroundColor Yellow
 Write-Host "  1. Copy OCR-portable.zip to the new machine" -ForegroundColor Yellow
 Write-Host "  2. Extract to a local directory (e.g. D:\OCR)" -ForegroundColor Yellow
-Write-Host "  3. Double-click Start-OCR.bat (approve the UAC prompt)" -ForegroundColor Yellow
+Write-Host "  3. Double-click the shortcut with the logo, or OCR-Panel.bat" -ForegroundColor Yellow
 Write-Host "     It configures the token, firewall, and starts the service." -ForegroundColor Yellow
 Write-Host ""

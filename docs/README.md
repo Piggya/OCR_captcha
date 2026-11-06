@@ -1,4 +1,4 @@
-# 土著内网验证码识别 v0.9.5
+﻿# 土著内网验证码识别 v0.11.0
 
 公司局域网用的纯本地验证码识别 + 自动填充方案。基于 FastAPI + ddddocr + Tampermonkey。
 
@@ -34,18 +34,36 @@ D:\OCR
 │  ├─ update_ocr.ps1        # 便携版原地更新（保留 config/python）
 │  ├─ show_info.ps1         # 显示/复制服务器地址、token、安装地址
 │  ├─ check_version_bump.ps1 # 发布前校验 GreasyFork @version 递增
-│  └─ restart_server.ps1    # 重启服务
+│  ├─ panel.ps1             # 控制面板（WinForms，快捷方式 / launchers/OCR-Panel.bat 调用）
+│  ├─ panel_launch.vbs      # 静默提权启动面板（wscript.exe，无黑框）
+│  ├─ make_shortcut.ps1     # 生成根目录「OCR 控制面板.lnk」（带 Logo 图标）
+│  ├─ make_icon.ps1         # 由 assets/logo.png 生成多尺寸 ocr-panel.ico
+│  ├─ ui_kit.ps1            # 面板自绘控件与配色
+│  ├─ start_service_bg.ps1  # 后台启动服务（不改配置，面板/自启任务调用）
+│  ├─ restart_server.ps1    # 重启服务（开发用）
+│  ├─ start_server.ps1      # 前台启动（仅开发环境调试用）
+│  └─ install.ps1           # 首次安装（建 .venv + 装依赖）
+├─ launchers/               # 面向用户的 .bat 入口（命令行后备）
+│  ├─ OCR-Panel.bat         # 控制面板（静默提权）
+│  ├─ Start-OCR.bat         # 便携版一键启动（自动提权）
+│  ├─ Stop-OCR.bat          # 便携版一键停止
+│  ├─ Update-OCR.bat        # 便携版一键更新（自动提权）
+│  ├─ Show-OCR-Info.bat     # 显示/复制服务器地址、token、安装地址
+│  └─ start_server.bat      # 前台启动（仅开发环境调试用）
+├─ assets/                  # 图标资源
+│  ├─ logo.png              # 高清 Logo（500x500，图标源文件）
+│  ├─ ocr-logo.png          # 原始 Logo（32x32）
+│  ├─ icon.png              # 小图标
+│  └─ ocr-panel.ico         # 多尺寸图标（快捷方式 + 面板窗口）
 ├─ docs/                    # 文档
 │  ├─ README.md             # 本文档 - 系统介绍
 │  ├─ DEPLOY.md             # 部署迁移指南
 │  ├─ GREASYFORK.md         # GreasyFork 发布文案
+│  ├─ PANEL.md              # 控制面板 / 开机自启 评估与路径
 │  └─ CHANGELOG.md          # 开发日志
-├─ Start-OCR.bat            # 便携版一键启动（自动提权）
-├─ Stop-OCR.bat             # 便携版一键停止
-├─ Update-OCR.bat           # 便携版一键更新（自动提权）
-├─ Show-OCR-Info.bat        # 显示/复制服务器地址、token、安装地址
+├─ OCR 控制面板.lnk         # ★ 推荐入口：双击打开面板（带 Logo 图标，自动生成）
+├─ OCR-Panel.bat            # 根目录入口：转发到 launchers\OCR-Panel.bat
 ├─ README-FIRST.txt         # 便携版给使用者的说明
-├─ start_server.ps1         # 启动脚本（开发环境用）
 └─ requirements.txt         # Python 依赖
 ```
 
@@ -70,22 +88,37 @@ D:\OCR
 
 ### 便携版（推荐给新机器/局域网内其他设备）
 1. 下载并解压 `OCR-portable.zip` 到本地目录
-2. 双击 `Start-OCR.bat`，UAC 点“是”
-3. 把窗口里显示（且已复制到剪贴板）的
+2. 双击根目录的 **`OCR 控制面板.lnk`（带 Logo 图标）** → 点「启动服务」，UAC 点“是”（首次会用 `launchers\Start-OCR.bat` 建配置、开防火墙）
+3. 面板上显示（也可点「复制连接信息」）的
    `http://<服务器IP>:1205/userscript.user.js` 发给局域网内的其他设备
 4. 这些设备装好 Tampermonkey 后打开该地址安装即可，**无需填写 URL/token**
-5. 以后查看/复制完整连接信息：双击 `Show-OCR-Info.bat`（服务器地址 + token + 安装地址，自动进剪贴板）
+
+**为什么是 `.lnk` 而不是 `.bat`**：Windows 里双击 `.bat` 只会显示 cmd/脚本的默认图标，
+批处理文件本身无法自定义图标。快捷方式带自己的图标，所以安装目录根下由
+`tools\make_shortcut.ps1` 生成 `OCR 控制面板.lnk`，指向
+`wscript.exe //nologo tools\panel_launch.vbs`——不经过 cmd，仍然不闪黑框、保留静默提权。
+快捷方式里是绝对路径，**换目录或更新后会自动重建**；如果被删掉，双击 `OCR-Panel.bat`
+或在面板里点任意操作也会补回来（也可手动运行 `tools\make_shortcut.ps1 -Desktop` 在桌面也放一份）。
+
+**面板能做什么**：状态/版本/地址一览、启动/停止/重启服务、首次配置修复、更新服务端、
+复制连接信息、打开安装地址、查看日志；「开机自启」开关（默认关闭）。
+
+**关闭面板不会停止服务**；需要停止请点面板上的「停止服务」。详见 `docs/PANEL.md`。
+
+> 根目录的 `launchers\Start-OCR.bat` / `launchers\Stop-OCR.bat` / `launchers\Update-OCR.bat` / `launchers\Show-OCR-Info.bat`
+> 都是面板里同名功能的命令行后备手段，日常直接用面板即可。
+> `tools\start_server.ps1` / `launchers\start_server.bat` 只给开发人员前台调试，不要用来部署。
 
 > 局域网其他电脑**不需要**下载 zip 或安装 Python，只需能访问服务器的 1205 端口 + Tampermonkey。
 
 ### 更新
 
 **服务端**
-- 能访问 GitHub：双击 `Update-OCR.bat`（自动提权）。保留 `server/config.json` 和 `python/`，更新前备份到 `backup-<时间戳>/`。
+- 能访问 GitHub：面板上点「更新服务端」，或双击 `launchers\Update-OCR.bat`（自动提权）。保留 `server/config.json` 和 `python/`，更新前备份到 `backup-<时间戳>/`。
 - 局域网离线：下载 [main.zip](https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip)，拷贝后运行
   `powershell -File tools\update_ocr.ps1 -SourceZip "C:\path\main.zip"`。
 - 不要删除 `server/config.json`，否则 token 会重新生成。
-- 从 0.9.1 及更早版本升级：旧包没有 `Update-OCR.bat`，需把新版里的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制进去，或解压完整新包后复制旧 `server/config.json`。
+- 从 0.9.1 及更早版本升级：旧包没有 `launchers\Update-OCR.bat`，需把新版里的 `launchers\Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制进去，或解压完整新包后复制旧 `server/config.json`。
 
 **局域网设备脚本**
 - 局域网安装：Tampermonkey 管理面板 →「检查用户脚本更新」，或菜单「从 OCR 服务器更新脚本…」。
@@ -101,11 +134,11 @@ D:\OCR
 
 ```powershell
 cd <项目目录>
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
-.\start_server.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\install.ps1
+.\tools\start_server.ps1
 ```
 
-`start_server.ps1` 自动完成：
+`tools\start_server.ps1` 自动完成：
 1. 探测本机局域网 IP
 2. 生成配置和随机 api_token
 3. 启动 uvicorn 服务
@@ -208,12 +241,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 
 ### 油猴菜单功能
 
-油猴菜单已精简为 5 项：
+油猴菜单已精简为 6 项：
 - **识别并填码**：手动触发一次识别
 - **刷新后识别**：点击验证码刷新按钮后识别
+- **切换本站识别（开/关）**：只对当前网站生效，关闭后该站不再自动识别/不点刷新；状态按域名记住，重新开启会立即识别一次
 - **OCR 服务器设置…**：打开设置对话框，填写 URL/token、显示 token、测试 `/health`、保存（存浏览器本地）
 - **高级功能…**：打开二级对话框，包含大小写切换、重置断路器、站点规则的添加/查看/删除/清空
-- **从 OCR 服务器更新脚本…**：打开 `http://<服务器IP>:1205/userscript.user.js`，让 Tampermonkey 检查/重装脚本；无法访问 GitHub 时使用。**它只更新脚本，不更新服务端程序**；服务端升级用 `Update-OCR.bat`。
+- **从 OCR 服务器更新脚本…**：打开 `http://<服务器IP>:1205/userscript.user.js`，让 Tampermonkey 检查/重装脚本；无法访问 GitHub 时使用。**它只更新脚本，不更新服务端程序**；服务端升级用面板的「更新服务端」或 `launchers\Update-OCR.bat`。
 
 > 入口在 Tampermonkey **扩展菜单**（页面右上角油猴图标）里；Tampermonkey 管理面板没有开放自定义入口 API，脚本无法往面板里加按钮。
 >
@@ -247,13 +281,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 
 ```powershell
 # 默认扫描 tools\test-assets
-& .\.venv\Scripts\python.exe tools\benchmark.py
+python tools\benchmark.py
 
 # 指定自己的图片目录 + 多轮 + 生成 HTML 校验报告
-& .\.venv\Scripts\python.exe tools\benchmark.py --dir D:\captchas --repeat 3 --report report.html
+python tools\benchmark.py --dir D:\captchas --repeat 3 --report report.html
 
 # 站点不区分大小写时，忽略大小写差异看真实准确率
-& .\.venv\Scripts\python.exe tools\benchmark.py --ignore-case
+python tools\benchmark.py --ignore-case
 ```
 
 > 提示：ddddocr 默认输出小写字母。若目标站点大写且区分大小写，脚本默认已把结果转成大写（`letterCase: "upper"`）；个别站点可用油猴菜单「切换验证码大小写（大写/小写/原样）」按站点调整。

@@ -243,6 +243,17 @@ if ($isAdmin) {
 Write-Host ""
 Write-Host "[7/8] Starting OCR service..." -ForegroundColor Cyan
 
+# Make sure the launcher shortcut (logo icon) exists in the install root.
+# It is machine-specific, so it is created here rather than shipped in the zip.
+$mkShortcut = Join-Path $root "tools\make_shortcut.ps1"
+if (Test-Path -LiteralPath $mkShortcut) {
+    try {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $mkShortcut -TargetRoot $root -Quiet
+    } catch {
+        Write-Host ("      [WARNING] Could not create the launcher shortcut: " + $_.Exception.Message) -ForegroundColor Yellow
+    }
+}
+
 # Kill any existing python that might hold the configured port
 $portOwner = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
     Select-Object -First 1 -ExpandProperty OwningProcess

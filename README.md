@@ -32,9 +32,16 @@ FastAPI (uvicorn :1205)
 ## 最快：下载即用（免 Python）
 
 1. 下载 [`OCR-portable.zip`](https://github.com/Piggya/OCR_captcha/releases/latest/download/OCR-portable.zip)
-2. 解压到本地目录，双击 `Start-OCR.bat`，UAC 点“是”
-3. 把窗口显示（已复制到剪贴板）的 `http://<本机IP>:1205/userscript.user.js` 发给局域网内的其他设备
+2. 解压到本地目录，双击 `OCR-Panel.bat` → 点「启动服务」，UAC 点“是”
+3. 面板上显示（可点「复制连接信息」）的 `http://<本机IP>:1205/userscript.user.js` 发给局域网内的其他设备
 4. 这些设备装 Tampermonkey 后打开该地址安装，**无需填 URL/token**
+
+> **控制面板**（`OCR-Panel.bat`）：状态/版本/地址一览、启动/停止/重启服务、首次配置修复、
+> 更新服务端、复制连接信息、查看日志，以及「开机自启」开关（默认关闭）。
+> **关闭面板不会停止服务**；需要停止请点「停止服务」。详见 [docs/PANEL.md](docs/PANEL.md)。
+>
+> 根目录的 `launchers\Start-OCR.bat` / `launchers\Stop-OCR.bat` / `launchers\Update-OCR.bat` / `launchers\Show-OCR-Info.bat`
+> 是面板里同名功能的命令行后备；`tools\start_server.ps1` 只给开发人员前台调试。
 
 > 局域网其他电脑不需要下载便携包或安装 Python，只要能访问服务器的 1205 端口，并有 Tampermonkey 即可。
 >
@@ -47,11 +54,11 @@ FastAPI (uvicorn :1205)
 ```powershell
 git clone https://github.com/Piggya/OCR_captcha.git OCR
 cd OCR
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File .\start_server.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\install.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\start_server.ps1
 ```
 
-`start_server.ps1` 首次运行会：
+`tools\start_server.ps1` 首次运行会：
 
 1. 从 `server/config.example.json` 生成 `server/config.json`
 2. 自动生成随机 `api_token`
@@ -67,20 +74,20 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 
 ### 便携版（不装 Python）
 
-在已配置好的机器上运行 `tools/build_portable.ps1` 生成 `OCR-portable.zip`，拷到新机器解压后**双击 `Start-OCR.bat`** 即可（自动提权、生成 token、开防火墙、后台启动）。详见 [docs/DEPLOY.md](docs/DEPLOY.md)。
+在已配置好的机器上运行 `tools/build_portable.ps1` 生成 `OCR-portable.zip`，拷到新机器解压后**双击 `OCR-Panel.bat` 点「启动服务」**即可（自动提权、生成 token、开防火墙、后台启动）。详见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
-启动后如需查看/复制服务器地址、token 和安装地址，双击 **`Show-OCR-Info.bat`**，完整信息会自动进剪贴板。
+启动后如需查看/复制服务器地址、token 和安装地址，在面板上点 **「复制连接信息」**（或双击 `launchers\Show-OCR-Info.bat`），完整信息会自动进剪贴板。
 
 ## 更新
 
 **服务端**
-- 能访问 GitHub：双击 `Update-OCR.bat`（自动提权）。它会下载最新源码，保留 `server/config.json` 和 `python/`，更新前备份到 `backup-时间戳/`，更新后自动重启。
+- 能访问 GitHub：面板上点「更新服务端」，或双击 `launchers\Update-OCR.bat`（自动提权）。它会下载最新源码，保留 `server/config.json` 和 `python/`，更新前备份到 `backup-时间戳/`，更新后自动重启。
 - 局域网无法访问 GitHub：在能上网的机器下载 [源码 zip](https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip)，拷过来后以管理员运行：
   ```powershell
   powershell -ExecutionPolicy Bypass -File tools\update_ocr.ps1 -SourceZip "C:\path\main.zip"
   ```
 - **不要删 `server/config.json`**，否则会生成新 token。
-- 从 0.9.1 及更早版本升级：旧包没有 `Update-OCR.bat`，需把新版里的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制进去，或解压完整新包后复制旧 `server/config.json`。
+- 从 0.9.1 及更早版本升级：旧包没有 `launchers\Update-OCR.bat`，需把新版里的 `launchers\Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制进去，或解压完整新包后复制旧 `server/config.json`。
 
 **局域网设备脚本**
 - 局域网安装：Tampermonkey 管理面板 →「检查用户脚本更新」（`@updateURL` 指向服务器），或脚本菜单「从 OCR 服务器更新脚本…」。
@@ -109,7 +116,7 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 
 脚本头已指向本仓库。发布后，`@version` 变大时 Tampermonkey 会自动拉取（也可手动“检查用户脚本更新”）。
 
-**无法访问 GitHub 时**：服务端同样托管了脚本。菜单「**从 OCR 服务器更新脚本…**」会打开 `http://<服务器IP>:1205/userscript.user.js`，由 Tampermonkey 检查/重装脚本。它只更新脚本，不更新服务端程序；服务端升级用 `Update-OCR.bat`。服务端返回的脚本会把 `@updateURL` / `@downloadURL` 改成自身地址，并重新注入当前 token，所以更新后也能自动同步 token。
+**无法访问 GitHub 时**：服务端同样托管了脚本。菜单「**从 OCR 服务器更新脚本…**」会打开 `http://<服务器IP>:1205/userscript.user.js`，由 Tampermonkey 检查/重装脚本。它只更新脚本，不更新服务端程序；服务端升级用 `launchers\Update-OCR.bat`。服务端返回的脚本会把 `@updateURL` / `@downloadURL` 改成自身地址，并重新注入当前 token，所以更新后也能自动同步 token。
 
 **公开发布（GreasyFork）**：可把无 token 的公开脚本发布到 GreasyFork，方便搜索“局域网验证码 OCR”。发布文案、分类、隐私说明见 [docs/GREASYFORK.md](docs/GREASYFORK.md)。服务端仍需用户自行部署；局域网内的设备仍建议使用服务器注入地址。
 
@@ -140,13 +147,14 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 server/         FastAPI 应用、OCR 引擎、配置示例
 userscript/     Tampermonkey 脚本（唯一源，无密钥）
 tools/          部署、构建、测试、基准工具
-docs/           使用文档、部署指南、更新日志
-install.ps1     首次安装（建 venv + 依赖）
-start_server.ps1 生成配置并启动服务
-Start-OCR.bat   便携版一键启动（自动提权）
-Stop-OCR.bat    便携版一键停止
-Update-OCR.bat  便携版一键更新（保留 config/python）
-Show-OCR-Info.bat 显示/复制服务器地址、token、安装地址
+docs/           使用文档、部署指南、更新日志、控制面板说明
+tools\install.ps1     首次安装（建 venv + 依赖）
+OCR-Panel.bat   控制面板（推荐日常入口，自动提权 → tools/panel.ps1）
+tools\start_server.ps1 生成配置并启动服务（仅开发前台调试）
+launchers\Start-OCR.bat   便携版一键启动（自动提权）
+launchers\Stop-OCR.bat    便携版一键停止
+launchers\Update-OCR.bat  便携版一键更新（保留 config/python）
+launchers\Show-OCR-Info.bat 显示/复制服务器地址、token、安装地址
 README-FIRST.txt 便携版给使用者的说明
 ```
 

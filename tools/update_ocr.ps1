@@ -32,6 +32,13 @@ function Write-Step([string]$text) {
     Write-Host "[UPDATE] $text" -ForegroundColor Cyan
 }
 
+function Write-Phase([int]$percent, [string]$text) {
+    # Machine-readable progress line consumed by the control panel, which
+    # turns it into the progress bar and the one-line status caption.
+    Write-Host ("[PROGRESS] {0}|{1}" -f $percent, $text) -ForegroundColor DarkCyan
+    Write-Step $text
+}
+
 function Get-AppVersion([string]$path) {
     $match = Select-String -LiteralPath $path -Pattern '__version__\s*=\s*"([^"]+)"' | Select-Object -First 1
     if ($match) { return $match.Matches[0].Groups[1].Value }
@@ -71,7 +78,7 @@ if (-not $isAdmin) {
 
 $oldVersion = Get-AppVersion $appPy
 if (-not $oldVersion) { $oldVersion = "unknown" }
-Write-Step ("Installed version: " + $oldVersion)
+Write-Phase 3 ("Installed version: " + $oldVersion)
 
 $work = Join-Path $env:TEMP ("ocr-update-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $work -Force | Out-Null
@@ -81,7 +88,7 @@ try {
     if (-not $zipPath) {
         $zipPath = Join-Path $work "main.zip"
         $url = "https://github.com/Piggya/OCR_captcha/archive/refs/heads/main.zip"
-        Write-Step "Downloading the latest source from GitHub..."
+        Write-Phase 8 "Downloading the latest source from GitHub..."
         $ok = $false
         try {
             Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -TimeoutSec 120
@@ -96,7 +103,7 @@ try {
             $proxies += "http://127.0.0.1:7890"
             foreach ($proxy in ($proxies | Select-Object -Unique)) {
                 try {
-                    Write-Step ("Retrying via proxy " + $proxy)
+                    Write-Phase 12 ("Retrying via proxy " + $proxy)
                     Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -TimeoutSec 120 -Proxy $proxy
                     $ok = $true
                     break
@@ -118,7 +125,7 @@ try {
         exit 1
     }
 
-    Write-Step "Extracting..."
+    Write-Phase 40 "Extracting..."
     $extract = Join-Path $work "src"
     New-Item -ItemType Directory -Path $extract -Force | Out-Null
     Expand-Archive -LiteralPath $zipPath -DestinationPath $extract -Force
@@ -139,7 +146,7 @@ try {
 
     $newVersion = Get-AppVersion (Join-Path $srcRoot "server\app.py")
     if (-not $newVersion) { $newVersion = "unknown" }
-    Write-Step ("Source version: " + $newVersion)
+    Write-Phase 45 ("Source version: " + $newVersion)
 
     if (-not $Force -and $oldVersion -ne "unknown" -and $newVersion -ne "unknown") {
         try {
@@ -155,7 +162,7 @@ try {
         try { $port = [int](Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json).port } catch { }
     }
 
-    Write-Step ("Stopping the service on port " + $port + " (if running)...")
+    Write-Phase 50 ("Stopping the service on port " + $port + " (if running)...")
     $connections = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($connections) {
         $connections | ForEach-Object {
@@ -175,7 +182,7 @@ try {
     if (Test-Path -LiteralPath $userscriptDir) {
         Copy-Item -LiteralPath $userscriptDir -Destination (Join-Path $backup "userscript") -Recurse -Force
     }
-    Write-Step ("Backup: " + $backup)
+    Write-Phase 58 ("Backup: " + $backup)
 
     $oldReq = Join-Path $root "requirements.txt"
     $newReq = Join-Path $srcRoot "requirements.txt"
@@ -201,7 +208,7 @@ try {
         }
     }
 
-    Write-Step "Copying code (config.json and python/ are preserved)..."
+    Write-Phase 62 "Copying code (config.json and python/ are preserved)..."
     Copy-ProjectTree (Join-Path $srcRoot "server") $serverDir @("config.json", "*.pyc", "server.log", "server.err.log")
     Copy-ProjectTree (Join-Path $srcRoot "userscript") $userscriptDir
     # Do not overwrite the running updater itself; a future updater change
@@ -215,10 +222,21 @@ try {
     }
     Copy-ProjectTree (Join-Path $srcRoot "docs") (Join-Path $root "docs")
 
+    # Launchers moved out of the repo root in v0.11.0. An older updater does
+    # not know about the "launchers" folder, so sync it explicitly here and
+    # keep a copy of the previous state in the backup folder.
+    $srcLaunchers = Join-Path $srcRoot "launchers"
+    $dstLaunchers = Join-Path $root "launchers"
+    if (Test-Path -LiteralPath $srcLaunchers) {
+        if (Test-Path -LiteralPath $dstLaunchers) {
+            Copy-Item -LiteralPath $dstLaunchers -Destination (Join-Path $backup "launchers") -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        Copy-ProjectTree $srcLaunchers $dstLaunchers @("*.pyc")
+    }
+
     $rootFiles = @(
-        "Start-OCR.bat", "Stop-OCR.bat", "Update-OCR.bat", "Show-OCR-Info.bat", "README-FIRST.txt",
-        "start_server.ps1", "start_server.bat", "install.ps1",
-        "requirements.txt", "README.md", "LICENSE"
+        "README-FIRST.txt", "README.md", "LICENSE",
+        "requirements.txt"
     )
     foreach ($name in $rootFiles) {
         $source = Join-Path $srcRoot $name
@@ -227,12 +245,36 @@ try {
         }
     }
 
+    # The .bat/.vbs launchers moved from the repo root into the "launchers"
+    # folder (v0.11.0). Updating from an older package would leave the OLD
+    # launchers in the root, and they point at paths that no longer exist, so
+    # remove them once the new ones are in place.
+    $movedLaunchers = @(
+        "OCR-Panel.bat", "Start-OCR.bat", "Stop-OCR.bat", "Update-OCR.bat",
+        "Show-OCR-Info.bat", "start_server.bat", "start_server.ps1", "install.ps1"
+    )
+    $newLaunchers = Join-Path $root "launchers"
+    $newPanel = Join-Path $newLaunchers "OCR-Panel.bat"
+    if (Test-Path -LiteralPath $newPanel) {
+        foreach ($name in $movedLaunchers) {
+            $stale = Join-Path $root $name
+            if (Test-Path -LiteralPath $stale) {
+                Remove-Item -LiteralPath $stale -Force -ErrorAction SilentlyContinue
+                Write-Host ("  removed old launcher: " + $name) -ForegroundColor DarkGray
+            }
+        }
+    } elseif (@($movedLaunchers | Where-Object { Test-Path -LiteralPath (Join-Path $root $_) }).Count -gt 0) {
+        # Old updater + old package: keep the root launchers working rather
+        # than leaving the user with no way to start the service.
+        Write-Host "[WARNING] New launchers were not downloaded; keeping the existing ones in the root." -ForegroundColor Yellow
+    }
+
     if ($reqChanged) {
         if ($SkipDependencies) {
             Write-Host "[WARNING] requirements.txt changed; dependencies were NOT installed (-SkipDependencies)." -ForegroundColor Yellow
             Write-Host "          Run: .\python\python.exe -m pip install -r requirements.txt" -ForegroundColor Yellow
         } else {
-            Write-Step "requirements.txt changed; installing dependencies into the portable Python..."
+            Write-Phase 78 "requirements.txt changed; installing dependencies into the portable Python..."
             $previousEAP = $ErrorActionPreference
             $ErrorActionPreference = "Continue"
             & $python -m pip install -r (Join-Path $srcRoot "requirements.txt") --no-warn-script-location
@@ -244,7 +286,7 @@ try {
         }
     }
 
-    Write-Step "Restarting the service..."
+    Write-Phase 90 "Restarting the service..."
     $setup = Join-Path $root "tools\setup_new_server.ps1"
     if (Test-Path -LiteralPath $setup) {
         & powershell -NoProfile -ExecutionPolicy Bypass -File $setup -NonInteractive
@@ -255,6 +297,19 @@ try {
         Write-Host "[WARNING] tools\setup_new_server.ps1 not found. Run Start-OCR.bat." -ForegroundColor Yellow
     }
 
+    # The launcher shortcut stores an absolute path to wscript.exe + the VBS,
+    # so it must be (re)created on every extract/update location.
+    $mkShortcut = Join-Path $root "tools\make_shortcut.ps1"
+    if (Test-Path -LiteralPath $mkShortcut) {
+        try {
+            & powershell -NoProfile -ExecutionPolicy Bypass -File $mkShortcut -TargetRoot $root -Quiet
+            Write-Host "  launcher shortcut ready: OCR 控制面板.lnk" -ForegroundColor DarkGray
+        } catch {
+            Write-Host ("[WARNING] Could not create the launcher shortcut: " + $_.Exception.Message) -ForegroundColor Yellow
+        }
+    }
+
+    Write-Phase 100 "Update finished"
     Write-Host ""
     Write-Host "============================================================" -ForegroundColor Green
     Write-Host (" Update complete: " + $oldVersion + " -> " + $newVersion) -ForegroundColor Green

@@ -11,18 +11,19 @@
 ① 旧机器运行 tools\build_portable.ps1          → 生成 OCR-portable.zip
 ② OCR-portable.zip 传到新机器                   → U盘/共享文件夹/Release 下载
 ③ 新机器解压到 E:\OCR                           → 本地目录，不要在网络共享里运行
-④ 双击 Start-OCR.bat                            → UAC 点“是”，自动完成全部配置
-   （等价命令：powershell -File tools\setup_new_server.ps1 -NonInteractive）
-⑤ 把窗口显示（已复制到剪贴板）的脚本地址发给局域网内的其他设备
+④ 双击 OCR-Panel.bat                            → UAC 点“是”，点「首次配置/修复」
+   即改用 launchers\Start-OCR.bat（等价命令：powershell -File tools\setup_new_server.ps1 -NonInteractive）
+⑤ 面板上点「复制连接信息」，把脚本地址发给局域网内的其他设备
    http://<新机器IP>:1205/userscript.user.js
    → 这些设备打开安装即可，无需填 URL/token
-⑥ 需要地址+token 时双击 Show-OCR-Info.bat
-   → 服务器地址、API token、安装地址已复制到剪贴板
+⑥ 需要开机自启：面板上勾选「开机自启」（默认关闭）
 ```
 
-`Start-OCR.bat` 会自提权并调用 `setup_new_server.ps1 -NonInteractive`：接受探测到的 IP → 生成 token → 开防火墙 → 设置电源 → 后台启动服务，并在结尾打印脚本地址。token 只在第一次运行时生成，之后重启不会变化。
+`launchers\Start-OCR.bat` 会自提权并调用 `setup_new_server.ps1 -NonInteractive`：接受探测到的 IP → 生成 token → 开防火墙 → 设置电源 → 后台启动服务，并在结尾打印脚本地址。token 只在第一次运行时生成，之后重启不会变化。
 
-> 重启电脑后服务停止，需设置开机自启 → 见末尾"开机自启"章节。
+> **控制面板** `OCR-Panel.bat` 把上面的启动/停止/更新/复制连接信息/开机自启集中在一个窗口里；关闭面板**不会**停止服务。
+
+> 重启电脑后服务默认不启动，需要开机自启 → 见末尾"开机自启"章节。
 
 ---
 
@@ -70,7 +71,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_portable.ps1
 
 > 路径不要有中文或空格；不要直接在压缩包里运行，也不要放在 UNC 网络路径下。
 
-双击 **`Start-OCR.bat`**（自动请求管理员权限）。如果 SmartScreen 拦截，点“更多信息” → “仍要运行”。
+双击 **`OCR-Panel.bat`** 点「首次配置/修复」（或直接双击 `launchers\Start-OCR.bat`，自动请求管理员权限）。如果 SmartScreen 拦截，点“更多信息” → “仍要运行”。
 
 也可以手动执行：
 
@@ -115,7 +116,7 @@ powercfg /change hibernate-timeout-ac 0
    - 注入值优先于浏览器本地存储；服务器换 IP 或轮换 token 后，升一次脚本版本即可自动同步
 4. 只有手动安装公开 GitHub 脚本时，才需要菜单「OCR 服务器设置…」
 5. 重配/查看：菜单「OCR 服务器设置…」
-6. 服务器上双击 `Show-OCR-Info.bat` 可显示并复制“服务器地址 + token + 安装地址”
+6. 服务器上面板点「复制连接信息」（或双击 `launchers\Show-OCR-Info.bat`）可显示并复制“服务器地址 + token + 安装地址”
 
 > 局域网脚本地址包含 token，只对 `allowed_clients` 中的 IP 返回，不要发到公网。
 > 更新方式：能上外网时脚本按 `@updateURL` 自动更新；无法访问 GitHub 时用菜单「从 OCR 服务器更新脚本…」。
@@ -225,7 +226,7 @@ Get-Content D:\OCR\server.err.log -Tail 20
 
 ## 更新服务端
 
-**能访问 GitHub**：双击 `Update-OCR.bat`（自动提权）。
+**能访问 GitHub**：面板上点「更新服务端」，或双击 `launchers\Update-OCR.bat`（自动提权）。
 
 更新流程：下载最新源码 → 停止 1205 服务 → 备份 `server/config.json`、`server/`、`userscript/` 到 `backup-<时间戳>/` → 替换代码（**保留 `server/config.json` 和 `python/`**）→ 依赖有变化时 `pip install` → 调用 `setup_new_server.ps1 -NonInteractive` 重启并健康检查。
 
@@ -240,7 +241,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\update_ocr.ps1 -Source
 
 可选参数：`-Force`（同版本也重装）、`-SkipDependencies`（跳过 pip）、`-InstallRoot`（指定安装目录）。
 
-> 从 0.9.1 及更早版本升级时，旧目录里还没有 `Update-OCR.bat`：把新版中的 `Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制到旧目录后再双击；或解压完整新包，把旧 `server\config.json` 复制过去。
+> 从 0.9.1 及更早版本升级时，旧目录里还没有 `launchers\Update-OCR.bat`：把新版中的 `launchers\Update-OCR.bat` 和 `tools\update_ocr.ps1` 复制到旧目录后再双击；或解压完整新包，把旧 `server\config.json` 复制过去。
 
 > 不要删 `server/config.json`，否则会生成新 token，所有局域网设备都会 401。
 > 更新后局域网设备上的脚本按 `@version` 自动更新；轮换 token 时必须升一次 `@version`，或让局域网设备重新打开安装地址安装。
@@ -251,37 +252,33 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\update_ocr.ps1 -Source
 
 | 操作 | 命令 |
 |------|------|
-| 首次部署（一键） | 双击 `Start-OCR.bat` |
-| 查看/分享地址 + token | 双击 `Show-OCR-Info.bat`（自动复制到剪贴板） |
-| 更新服务端（一键，保留 config/python） | 双击 `Update-OCR.bat` |
+| **日常全部操作（推荐）** | 双击 `OCR-Panel.bat` |
+| 首次部署（一键） | 面板「首次配置/修复」，或双击 `launchers\Start-OCR.bat` |
+| 查看/分享地址 + token | 面板「复制连接信息」，或双击 `launchers\Show-OCR-Info.bat` |
+| 更新服务端（一键，保留 config/python） | 面板「更新服务端」，或双击 `launchers\Update-OCR.bat` |
 | 离线更新 | `powershell -File tools\update_ocr.ps1 -SourceZip "C:\path\main.zip"` |
-| 重启服务 | 双击 `Start-OCR.bat` 或 `powershell -File tools\restart_server.ps1` |
-| 停止服务 | 双击 `Stop-OCR.bat` |
+| 重启服务 | 面板「重启服务」，或 `powershell -File tools\restart_server.ps1` |
+| 停止服务 | 面板「停止服务」，或双击 `launchers\Stop-OCR.bat` |
 | 检查健康 | 浏览器打开 `http://127.0.0.1:1205/health` |
-| 查看日志 | `Get-Content server.err.log -Tail 20` |
-| IP 变了 | 重跑 `Start-OCR.bat`，把新脚本地址发给局域网内的设备（旧地址会失效） |
+| 查看日志 | 面板日志区，或 `Get-Content server.err.log -Tail 20` |
+| IP 变了 | 重跑「首次配置/修复」，把新脚本地址发给局域网内的设备（旧地址会失效） |
 
 ### 开机自启
 
-重启电脑后服务不会自动运行，需要手动启动。两种方式：
+**推荐：面板上的「开机自启」复选框（默认关闭）**
 
-**方式一：放到启动文件夹（推荐）**
-
-新建 `E:\OCR\start_service_bg.ps1`：
+- 勾选 → 创建计划任务 `OCR 服务自启`（登录时触发，动作是隐藏运行 `tools\start_service_bg.ps1`）
+- 取消 → 删除该任务
+- 等价命令（管理员）：
 
 ```powershell
-Start-Process -FilePath "E:\OCR\python\python.exe" `
-    -ArgumentList @('-m', 'uvicorn', 'server.app:app', '--host', '0.0.0.0', '--port', '1205', '--no-proxy-headers') `
-    -WorkingDirectory "E:\OCR" `
-    -WindowStyle Hidden
+schtasks /Create /TN "OCR 服务自启" /SC ONLOGON /F ^
+  /TR "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"E:\OCR\tools\start_service_bg.ps1\""
+schtasks /Delete /TN "OCR 服务自启" /F
 ```
 
-把这个脚本的快捷方式扔到开机启动文件夹：
-1. 右键 `start_service_bg.ps1` → 创建快捷方式
-2. 按 `Win+R` → 输入 `shell:startup` → 回车
-3. 把快捷方式拖进去
-
-以后开机自动在后台启动 OCR 服务，无窗口无感。
+> 自启任务启动的是**服务**而不是面板：关闭面板不停服务，两者互相独立。
+> 防火墙规则仍需由 `launchers\Start-OCR.bat` 授权一次。
 
 **方式二：注册为 Windows 服务（需下载 nssm）**
 

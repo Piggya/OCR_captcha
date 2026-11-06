@@ -1,6 +1,7 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0.."
+set "ROOT=%CD%"
 title OCR Service - One-click Setup
 
 rem --- Require administrator (firewall + power settings) -----------------------
@@ -11,7 +12,7 @@ if not "%errorlevel%"=="0" (
     exit /b
 )
 
-if not exist "%~dp0python\python.exe" (
+if not exist "%ROOT%\python\python.exe" (
     echo.
     echo [ERROR] python\python.exe was not found.
     echo Please extract the complete OCR-portable.zip to a local folder first.
@@ -35,18 +36,18 @@ echo.
 echo Keep this window open until setup finishes.
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\setup_new_server.ps1" -NonInteractive
+powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\setup_new_server.ps1" -NonInteractive
 set "rc=%errorlevel%"
 
 echo.
 if "%rc%"=="0" (
     echo Setup finished.
     echo The LAN devices' userscript URL was copied to the clipboard.
-    echo To view/copy server URL + token later: double-click Show-OCR-Info.bat
+    echo To view/copy server URL + token later: open OCR-Panel.bat
     start "" "http://127.0.0.1:1205/userscript.user.js"
 ) else (
     echo [ERROR] Setup failed with exit code %rc%.
-    echo Check server.err.log in this folder for details.
+    echo Check server.err.log in the install folder for details.
 )
 echo.
 pause

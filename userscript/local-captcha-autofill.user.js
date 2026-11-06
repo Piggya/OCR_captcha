@@ -2,7 +2,7 @@
 // @name         土著内网验证码识别
 // @icon         data:image/png;base64,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
 // @namespace    http://local-captcha-ocr.internal/
-// @version      0.9.5
+// @version      0.11.0
 // @description  Use a LAN OCR service to recognize and fill captcha fields on every site.
 // @description:zh-CN  自托管局域网验证码识别：OCR 自动识别并填入验证码。需自行部署服务端（GitHub 提供 Windows 便携包）。
 // @author       Piggya
@@ -25,6 +25,12 @@
 // ==/UserScript==
 
 // CHANGELOG (see docs/README.md):
+// 0.11.0 - Repo layout: user-facing .bat files moved to launchers\; panel update progress.
+// 0.10.2 - Control panel: redesigned card-based UI (status pill, rounded cards, pill buttons).
+// 0.10.1 - Control panel: colored status badge, full connection info with
+//          copy buttons, silent launch and a taskbar icon.
+// 0.10.0 - New menu item "切换本站识别（开/关）": enable/disable captcha
+//          recognition for the current site only (remembered per hostname).
 // 0.9.5  - Wording cleanup: use LAN / LAN devices / business systems
 //          consistently. Menu item renamed to "OCR 服务器设置" and
 //          "从 OCR 服务器更新脚本" (script only, not the server).
@@ -150,6 +156,57 @@
   }
   function isConfigured() {
     return Boolean(effectiveServerUrl() && effectiveToken());
+  }
+
+  // Per-site master switch: the operator can turn recognition off for the
+  // current host from the Tampermonkey menu (e.g. a site where the script
+  // misfires). State lives in GM storage, keyed by hostname.
+  const CFG_DISABLED_HOSTS_KEY = "ocr_disabled_hosts";
+
+  function getDisabledHosts() {
+    let map = null;
+    try {
+      map = GM_getValue(CFG_DISABLED_HOSTS_KEY, null);
+    } catch (_) {
+      map = null;
+    }
+    if (!map || typeof map !== "object" || Array.isArray(map)) return {};
+    return map;
+  }
+  function isHostDisabled(host) {
+    const key = String(host || "").toLowerCase();
+    if (!key) return false;
+    return Boolean(getDisabledHosts()[key]);
+  }
+  function isCurrentSiteDisabled() {
+    return isHostDisabled(window.location.hostname);
+  }
+  function setCurrentSiteDisabled(disabled) {
+    const map = getDisabledHosts();
+    const host = String(window.location.hostname || "").toLowerCase();
+    if (!host) return;
+    if (disabled) {
+      map[host] = true;
+    } else {
+      delete map[host];
+    }
+    try {
+      GM_setValue(CFG_DISABLED_HOSTS_KEY, map);
+    } catch (_) {
+      /* storage unavailable: the switch simply will not persist */
+    }
+  }
+  function toggleCurrentSiteRecognition() {
+    const disabled = !isCurrentSiteDisabled();
+    setCurrentSiteDisabled(disabled);
+    notify(disabled ? "已关闭本站验证码识别" : "已开启本站验证码识别");
+    if (!disabled) {
+      window.setTimeout(() => {
+        try {
+          recognizeAndFill();
+        } catch (_) {}
+      }, 100);
+    }
   }
 
   // Cache injected values so the menu still works if the script is later
@@ -1115,6 +1172,8 @@
   }
 
   async function recognizeAndFill() {
+    // Per-site switch: stay completely passive while disabled for this host.
+    if (isCurrentSiteDisabled()) return;
     if (!CONFIG.token) {
       // Prompt at most once automatically (the menu can always re-open the
       // settings). Prevents the MutationObserver from spamming prompts.
@@ -1204,6 +1263,10 @@
   }
 
   function refreshAndRecognize() {
+    if (isCurrentSiteDisabled()) {
+      notify("本站验证码识别已关闭，可在油猴菜单重新开启");
+      return;
+    }
     const rule = getRule();
     if (!rule) return;
     const refreshElement = rule.refreshSelector
@@ -1333,9 +1396,10 @@
     card.appendChild(intro);
 
     const current = document.createElement("div");
-    current.textContent = isConfigured()
-      ? `当前服务器：${effectiveServerUrl()}`
-      : "当前服务器：未配置";
+    const siteState = isCurrentSiteDisabled() ? "已关闭" : "已开启";
+    current.textContent =
+      `本站识别：${siteState}` +
+      (isConfigured() ? `　当前服务器：${effectiveServerUrl()}` : "　当前服务器：未配置");
     current.style.cssText = "color:#5f6368;font-size:13px;margin:0 0 12px;word-break:break-all";
     card.appendChild(current);
 
@@ -1419,6 +1483,7 @@
 
   GM_registerMenuCommand("识别并填码", recognizeAndFill);
   GM_registerMenuCommand("刷新后识别", refreshAndRecognize);
+  GM_registerMenuCommand("切换本站识别（开/关）", toggleCurrentSiteRecognition);
   GM_registerMenuCommand("OCR 服务器设置…", () => openServerConfigDialog(true));
   GM_registerMenuCommand("高级功能…", openAdvancedDialog);
   GM_registerMenuCommand("从 OCR 服务器更新脚本…", openServerUserscript);
@@ -1426,6 +1491,9 @@
   if (CONFIG.autoRun) {
     const boot = () => {
       window.setTimeout(async () => {
+        // Per-site switch: do not even prompt or start observing while the
+        // current host is disabled.
+        if (isCurrentSiteDisabled()) return;
         if (!isConfigured()) {
           // Ask once; the operator can always configure later from the menu.
           if (!GM_getValue("ocr_prompted", false)) {
