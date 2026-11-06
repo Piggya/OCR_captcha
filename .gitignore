@@ -23,6 +23,10 @@ server/config.json
 # stored in GM storage), so it is safe to publish for auto-updating.
 # portable package built by tools/build_portable.ps1
 OCR-portable.zip
+# The panel shortcut embeds an absolute path, so it is machine-specific.
+# It is never committed and never shipped: tools\make_shortcut.ps1 rebuilds it
+# on the target machine (setup_new_server.ps1, update_ocr.ps1, panel.ps1).
+*.lnk
 
 # Test artifacts
 docs/TEST-REPORT-*.md

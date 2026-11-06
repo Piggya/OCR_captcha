@@ -255,8 +255,12 @@ foreach ($item in $includeItems) {
     $dst = Join-Path $staging $item
     if (Test-Path $src -PathType Container) {
         # Copy directory with exclusion
-        robocopy $src $dst /E /XD __pycache__ debug-images edge-profile /XF *.pyc server.log server.err.log config.json TEST-REPORT-*.md result*.png /NFL /NDL /NJH /NJS /NC /NS /NP | Out-Null
+        robocopy $src $dst /E /XD __pycache__ debug-images edge-profile /XF *.pyc server.log server.err.log config.json TEST-REPORT-*.md result*.png *.lnk /NFL /NDL /NJH /NJS /NC /NS /NP | Out-Null
     } else {
+        if ($item -like "*.lnk") {
+            Write-Host "      [SKIP] $item (machine-specific shortcut)" -ForegroundColor DarkGray
+            continue
+        }
         Copy-Item -LiteralPath $src -Destination $dst -Force
     }
 }

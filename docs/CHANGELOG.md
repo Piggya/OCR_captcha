@@ -1,5 +1,11 @@
 # 开发日志
 
+## 0.11.1 (2026-11-06)
+- **修复**：新电脑从 GitHub 下载解压后，双击 `OCR 控制面板.lnk` 提示「无法找到脚本文件 ...panel_launch.vbs」。原因：快捷方式内嵌绝对路径，却被误提交进仓库，GitHub Release 源码 zip 里也带着旧电脑的路径。现已在 `.gitignore` 中忽略 `*.lnk` 并从版本库移除，仓库与发布包都不再包含快捷方式。
+- **修复**：`OCR-Panel.bat` 在根目录没有 `.lnk` 时自动调用 `tools\make_shortcut.ps1` 重建，再启动面板，所以新机器解压后双击一次 `.bat` 就能恢复带 Logo 的快捷方式。
+- **变更**：`README-FIRST.txt` 开头新增「从 GitHub 下载的包，解压后第一件事」说明，写明先双击 `OCR-Panel.bat` 以及旧快捷方式失效的原因。
+- **修复**：`tools\build_portable.ps1` 打包时把 `*.lnk` 一并排除（此前只在复制完成后删除，根目录单文件分支未过滤）。
+
 ## 0.11.0 (2026-11-05)
 - **变更**：脚本整理——面向用户的 `.bat` 入口全部移入 `launchers/`（`Start-OCR.bat`、`Stop-OCR.bat`、`Update-OCR.bat`、`Show-OCR-Info.bat`、`start_server.bat`、`OCR-Panel.bat`），`install.ps1`、`start_server.ps1` 移入 `tools/`。安装目录根下只剩 `OCR-Panel.bat`、`README-FIRST.txt`、`requirements.txt` 等少量文件。
 - **兼容**：根目录保留 `OCR-Panel.bat` 作转发入口，老用户双击习惯不变；所有 `.bat` 用 `cd /d "%~dp0.."` 回到根目录，`tools/*.ps1` 用 `Join-Path $PSScriptRoot ".."` 推断根目录。
