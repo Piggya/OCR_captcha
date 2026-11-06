@@ -38,6 +38,12 @@ tools/test-assets/edge-profile/
 __*
 tmp/
 scratch/
+# Screenshots and throwaway crops produced while debugging the panel/icons.
+# Root-level PNGs are never part of the project; the only shipped icons live
+# in assets/ and tools/test-assets/.
+/*.png
+release-*.md
+greasyfork-src/
 
 # IDE
 .vscode/
