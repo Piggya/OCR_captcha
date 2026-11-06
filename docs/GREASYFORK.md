@@ -16,7 +16,7 @@
 
 ## 发布前检查
 
-1. 版本号已升，且 `server/app.py`、脚本 `@version`、`docs/README.md`、CHANGELOG 一致。
+1. 版本号已升，且 `server/app.py`、脚本 `@version`、`docs/README-zh.md`、CHANGELOG 一致。
 2. 脚本头包含：
    - `@name 土著内网验证码识别`
    - `@namespace http://local-captcha-ocr.internal/`（**不要改**，否则油猴视为新脚本）

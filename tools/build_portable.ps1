@@ -205,6 +205,9 @@ $zipPath = Join-Path $root "OCR-portable.zip"
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 
 # Files/dirs to include
+# NOTE: all narrative docs (README, AGENTS, PUBLISH, CHANGELOG, ...) live in
+# docs\. The install root keeps only OCR-Panel.bat and README-FIRST.txt so the
+# launcher is the first thing a user sees after extracting.
 $includeItems = @(
     "python",
     "server",
@@ -216,7 +219,6 @@ $includeItems = @(
     "OCR-Panel.bat",
     "README-FIRST.txt",
     "requirements.txt",
-    "README.md",
     "LICENSE",
     ".gitignore"
 )

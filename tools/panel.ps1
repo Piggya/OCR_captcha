@@ -529,18 +529,54 @@ $cardConn.Controls.Add($btnCopyAll)
 $cardConn.Height = 236
 
 # ------------------------------------------------------------- service card --
+function Start-OcrServiceFromPanel {
+    <#
+        Runs start_service_bg.ps1 and, when it refuses to start, surfaces the
+        actual reason in a dialog instead of leaving the user with a red dot.
+
+        start_service_bg.ps1 exits 2 when the Python environment is unusable
+        (missing ddddocr etc.). The message it prints is the useful part, so it
+        is collected and shown verbatim.
+    #>
+    $output = @()
+    try {
+        $output = & powershell -NoProfile -ExecutionPolicy Bypass -File $startScript 2>&1
+        $code = $LASTEXITCODE
+    } catch {
+        $code = 1
+        $output = @($_.Exception.Message)
+    }
+    foreach ($line in $output) { Write-Log ([string]$line) }
+
+    if ($code -eq 2) {
+        $text = ($output | ForEach-Object { [string]$_ }) -join "`r`n"
+        $reason = ""
+        $idx = $text.IndexOf("Reason:")
+        if ($idx -ge 0) { $reason = $text.Substring($idx + 7).Trim() }
+        if (-not $reason) { $reason = $text.Trim() }
+        Show-Msg "服务无法启动：缺少 Python 依赖" $reason "Error"
+    } elseif ($code -ne 0) {
+        Show-Msg "服务启动失败" (
+            "启动脚本返回错误码 $code。详情见面板日志和 server.err.log。" + "`r`n`r`n" +
+            (($output | ForEach-Object { [string]$_ }) -join "`r`n")
+        ) "Error"
+    }
+
+    Start-Sleep -Milliseconds 800
+    Update-Status
+}
+
+
 $cardSvc = New-Card -Width 828 -Height 92 -Title "服务控制"
 $cardSvc.Location = New-Object System.Drawing.Point(20, 494)
 $form.Controls.Add($cardSvc)
 
 $btnStart = New-StyleButton -Text "启动服务" -Width 130 -Height 40 -Variant "accent"
-$btnStart.Location = New-Object System.Drawing.Point(18, 40)
-$btnStart.Add_Click({
-    Write-Log "启动服务 ..."
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $startScript 2>&1 | ForEach-Object { Write-Log $_ }
-    Start-Sleep -Milliseconds 800
-    Update-Status
-})
+    $btnStart.Location = New-Object System.Drawing.Point(18, 40)
+    $btnStart.Add_Click({
+        Write-Log "启动服务 ..."
+        Start-OcrServiceFromPanel
+    })
 $cardSvc.Controls.Add($btnStart)
 
 $btnStop = New-StyleButton -Text "停止服务" -Width 130 -Height 40 -Variant "danger"
@@ -559,18 +595,16 @@ $btnStop.Add_Click({
 $cardSvc.Controls.Add($btnStop)
 
 $btnRestart = New-StyleButton -Text "重启服务" -Width 130 -Height 40
-$btnRestart.Location = New-Object System.Drawing.Point(302, 40)
-$btnRestart.Add_Click({
-    $pid0 = Get-ListenerPid $script:port
-    if ($pid0 -gt 0) {
-        Stop-Process -Id $pid0 -Force -ErrorAction SilentlyContinue
-        Write-Log "已停止服务 (PID $pid0)"
-        Start-Sleep -Seconds 2
-    }
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $startScript 2>&1 | ForEach-Object { Write-Log $_ }
-    Start-Sleep -Milliseconds 800
-    Update-Status
-})
+    $btnRestart.Location = New-Object System.Drawing.Point(302, 40)
+    $btnRestart.Add_Click({
+        $pid0 = Get-ListenerPid $script:port
+        if ($pid0 -gt 0) {
+            Stop-Process -Id $pid0 -Force -ErrorAction SilentlyContinue
+            Write-Log "已停止服务 (PID $pid0)"
+            Start-Sleep -Seconds 2
+        }
+        Start-OcrServiceFromPanel
+    })
 $cardSvc.Controls.Add($btnRestart)
 
 $btnSetup = New-StyleButton -Text "首次配置/修复" -Width 140 -Height 40

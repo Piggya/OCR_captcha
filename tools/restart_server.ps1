@@ -10,14 +10,18 @@
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$python = Join-Path $root '.venv\Scripts\python.exe'
-if (-not (Test-Path $python)) { $python = Join-Path $root 'python\python.exe' }
-if (-not (Test-Path $python)) {
-    if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-        throw 'Python not found (looked for .venv, python\python.exe, and PATH)'
+. (Join-Path $PSScriptRoot 'python_env.ps1')
+$envCheck = Resolve-OcrPython -Root $root
+if (-not $envCheck.Ok) {
+    Write-Host '[ERROR] Python dependencies are missing, refusing to start.' -ForegroundColor Red
+    foreach ($attempt in $envCheck.Attempts) {
+        Write-Host ("  [{0}] {1} -> {2}" -f $attempt.Source, $attempt.Path, $attempt.Detail)
     }
-    $python = 'python'
+    Write-Host ''
+    Write-Host 'Fix: python -m pip install -r requirements.txt'
+    exit 2
 }
+$python = $envCheck.Path
 $configPath = Join-Path $root 'server\config.json'
 if (-not (Test-Path $configPath)) { throw "config not found at $configPath" }
 $cfg = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json

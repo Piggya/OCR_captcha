@@ -3,7 +3,7 @@
 本文件说明如何把项目安全地发布到 GitHub，并启用油猴脚本在线更新。
 
 > **发布前必须先获得开发者许可。** 每轮开发完成后，Agent 要主动询问「是否发布？」，
-> 得到明确答复后才能执行下面第 4 节的推送步骤。详见 `AGENTS.md` 第 0.1 节。
+> 得到明确答复后才能执行下面第 4 节的推送步骤。见见 `AGENTS.md` 第 0.1 节。
 
 ## 0. 发布前检查
 
@@ -38,7 +38,10 @@ git filter-repo --path server/config.json --invert-paths
 
 ## 3. 发布后
 
-- GitHub 仓库主页会直接显示根目录 `README.md`
+- GitHub 仓库主页不显示文档（根目录只保留 `OCR-Panel.bat` 与 `README-FIRST.txt`），
+  完整说明在 `docs/README-zh.md`
+- Release 必须上传 **`OCR-portable.zip`** 附件：只有它能做到零环境运行，
+  源码 zip 不含 `python\`，新电脑无法直接启动
 - 局域网设备安装：打开 `http://<服务器IP>:1205/userscript.user.js` 即可，服务端会自动注入 Server URL + token，无需手动填写
 - 外网用户安装：`https://raw.githubusercontent.com/<用户>/<仓库>/main/userscript/local-captcha-autofill.user.js`
 
@@ -51,7 +54,12 @@ git filter-repo --path server/config.json --invert-paths
    python tools\test_e2e.py
    ```
 4. 清理工作区（见 `AGENTS.md` 第 9 节）
-5. 提交并推送：
+5. 构建便携包（会重新下载 Python embeddable 并安装依赖，耗时较长）：
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_portable.ps1
+   ```
+   > 构建前必须先停止服务，`cv2.pyd` 被占用会失败。
+6. 提交并推送：
    ```powershell
    git add -A
    git commit -m "vX.Y.Z: ..."
@@ -59,6 +67,33 @@ git filter-repo --path server/config.json --invert-paths
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
+7. **创建 Release 时必须上传 `OCR-portable.zip` 附件**（关键步骤）。
+
+## 4.1 Release 必须附带便携包
+
+源码 zip（GitHub 自动生成）**不包含 `python\` 目录**，目标电脑若没有安装
+Python 与全部依赖，双击 `OCR-Panel.bat` 会报 `No module named 'ddddocr'`。
+
+因此每次创建 Release 都必须把 `OCR-portable.zip` 作为附件上传：
+
+```powershell
+# 需要 GitHub token（从凭据管理器读取，不要打印）
+$tok = (git credential fill <<< ...)   # 见 AGENTS.md 第 10 节
+$rel = Invoke-RestMethod -Uri "https://api.github.com/repos/Piggya/OCR_captcha/releases" `
+    -Method Post -Headers @{ Authorization = "token $tok" } `
+    -ContentType "application/json" -Body (@{
+        tag_name = "vX.Y.Z"; name = "vX.Y.Z"; draft = $false
+    } | ConvertTo-Json)
+
+# upload_url 去掉 {?name,label} 模板后缀
+$upload = ($rel.upload_url -split "\{")[0] + "?name=OCR-portable.zip"
+Invoke-RestMethod -Uri $upload -Method Post `
+    -Headers @{ Authorization = "token $tok"; "Content-Type" = "application/zip" } `
+    -InFile "OCR-portable.zip"
+```
+
+发布后必须验证附件确实可下载（浏览器打开 Release 页面，确认能看到
+`OCR-portable.zip` 并显示约 160 MB）。
 
 > Tampermonkey 默认每 24 小时检查一次更新，也可手动“检查用户脚本更新”。
 

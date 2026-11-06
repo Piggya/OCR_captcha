@@ -1,5 +1,14 @@
 # 开发日志
 
+## 0.12.0 (2026-11-06)
+- **修复**：便携包现在真正做到了「零环境可用」。`tools/build_portable.ps1` 生成的 `OCR-portable.zip` 内置 Python 运行时装全部依赖，在没有任何 Python 的电脑上解压后双击 `OCR-Panel.bat` 即可启动。此前 Release 从未上传过该附件，用户只能下载源码 zip（不含 `python\`），因此必然报 `No module named 'ddddocr'`。
+- **修复**：新电脑启动失败时不再只输出 uvicorn 堆栈。新增 `tools/python_env.ps1`，启动前逐个候选解释器试导入 `fastapi/uvicorn/pydantic/ddddocr`，全部通过才使用；失败时 `start_service_bg.ps1` 以退出码 2 结束并打印中文原因与解决办法，控制面板弹窗显示具体缺失的模块。
+- **修复**：`tools/setup_new_server.ps1` 在检测到依赖缺失时不再直接退出，而是自动创建 `.venv` 并执行 `pip install -r requirements.txt`，安装后二次校验。
+- **修复**：`tools/panel_launch.ps1` 在首次运行时（`server\config.json` 不存在）静默生成配置与随机 token，使「解压 → 双击 → 可用」完整闭环；同时修掉把 `$args` 当变量名的问题。
+- **变更**：文档统一收进 `docs\`。根目录 `README.md` → `docs/README-zh.md`、`AGENTS.md` → `docs/AGENTS.md`、`PUBLISH.md` → `docs/PUBLISH.md`。根目录只保留 `OCR-Panel.bat`、`README-FIRST.txt`、`LICENSE`、`requirements.txt`、`.gitignore`，让入口一目了然。
+- **变更**：重写 `README-FIRST.txt`，改为正式文档口吻，按「安装与启动 / 控制面板 / 局域网接入 / 连接信息 / 日常操作 / 升级 / 故障处理 / 目录说明」组织，删除口语化说明。
+- **变更**：`docs/PUBLISH.md` 新增 4.1 节，明确 **Release 必须上传 `OCR-portable.zip` 附件**，并给出上传命令与验证方法；`docs/AGENTS.md` 硬性规则新增第 15、16 条。
+
 ## 0.11.1 (2026-11-06)
 - **修复**：新电脑从 GitHub 下载解压后，双击 `OCR 控制面板.lnk` 提示「无法找到脚本文件 ...panel_launch.vbs」。原因：快捷方式内嵌绝对路径，却被误提交进仓库，GitHub Release 源码 zip 里也带着旧电脑的路径。现已在 `.gitignore` 中忽略 `*.lnk` 并从版本库移除，仓库与发布包都不再包含快捷方式。
 - **修复**：`OCR-Panel.bat` 在根目录没有 `.lnk` 时自动调用 `tools\make_shortcut.ps1` 重建，再启动面板，所以新机器解压后双击一次 `.bat` 就能恢复带 Logo 的快捷方式。

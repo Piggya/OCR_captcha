@@ -235,7 +235,7 @@ try {
     }
 
     $rootFiles = @(
-        "README-FIRST.txt", "README.md", "LICENSE",
+        "README-FIRST.txt", "LICENSE",
         "requirements.txt"
     )
     foreach ($name in $rootFiles) {

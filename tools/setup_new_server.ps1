@@ -47,6 +47,7 @@ Write-Host ""
 
 $portablePython = Join-Path $root "python\python.exe"
 $venvPython = Join-Path $root ".venv\Scripts\python.exe"
+$requirements = Join-Path $root "requirements.txt"
 
 if (Test-Path $portablePython) {
     $python = $portablePython
@@ -65,22 +66,71 @@ if (Test-Path $portablePython) {
         Write-Host "      Expected portable Python at: $portablePython" -ForegroundColor Red
         Write-Host "      Or venv Python at: $venvPython" -ForegroundColor Red
         Write-Host "      Or system Python in PATH" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "      If you downloaded the GitHub SOURCE zip, it does not contain" -ForegroundColor Yellow
+        Write-Host "      the bundled runtime. Install Python 3.10+ from python.org" -ForegroundColor Yellow
+        Write-Host "      and run this again, or use OCR-portable.zip from the Release." -ForegroundColor Yellow
         exit 1
     }
 }
 
-# Quick import check
-$importCheck = & $python -c "
+# Verify the dependencies. If they are missing, CREATE them instead of giving
+# up: a source-zip copy on a clean machine has no python\ and no .venv, which
+# used to end in "Import check FAILED" with no way forward.
+$importProbe = @'
 try:
     import ddddocr, fastapi, uvicorn, onnxruntime, PIL, numpy, pydantic
     print('ok')
 except Exception as e:
     print('FAIL: ' + str(e))
-" 2>&1
-if ($importCheck -ne "ok") {
-    Write-Host "      Import check FAILED: $importCheck" -ForegroundColor Red
-    Write-Host "      Dependencies may be missing. Run build_portable.ps1 on the source machine." -ForegroundColor Red
-    exit 1
+'@
+
+function Test-OcrImports([string]$PythonExe) {
+    $script = Join-Path $env:TEMP ("ocr_importcheck_" + [guid]::NewGuid().ToString("N") + ".py")
+    try {
+        [IO.File]::WriteAllText($script, $importProbe, (New-Object Text.UTF8Encoding($false)))
+        $result = (& $PythonExe $script 2>&1 | Out-String).Trim()
+        return ($result -eq "ok")
+    } catch {
+        return $false
+    } finally {
+        Remove-Item -LiteralPath $script -Force -ErrorAction SilentlyContinue
+    }
+}
+
+if (-not (Test-OcrImports $python)) {
+    Write-Host "      Dependencies missing, installing them now ..." -ForegroundColor Yellow
+
+    if (-not (Test-Path $requirements)) {
+        Write-Host "      ERROR: requirements.txt not found at $requirements" -ForegroundColor Red
+        exit 1
+    }
+
+    # Prefer a project-local venv so the install never touches the system Python.
+    if (-not (Test-Path $venvPython)) {
+        Write-Host "      Creating .venv ..."
+        & $python -m venv (Join-Path $root ".venv")
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $venvPython)) {
+            Write-Host "      ERROR: failed to create .venv" -ForegroundColor Red
+            exit 1
+        }
+    }
+    $python = $venvPython
+
+    Write-Host "      Installing from requirements.txt (this can take a few minutes) ..."
+    & $python -m pip install --upgrade pip --quiet
+    & $python -m pip install -r $requirements
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "      ERROR: pip install failed. Check your network or proxy." -ForegroundColor Red
+        exit 1
+    }
+
+    if (-not (Test-OcrImports $python)) {
+        Write-Host "      ERROR: dependencies still missing after install." -ForegroundColor Red
+        Write-Host "              Try running manually: $python -m pip install -r requirements.txt" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "      Dependencies installed successfully." -ForegroundColor Green
 }
 Write-Host "      All imports verified." -ForegroundColor Green
 

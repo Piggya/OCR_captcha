@@ -38,7 +38,7 @@ FastAPI (uvicorn :1205)
 
 > **控制面板**（`OCR-Panel.bat`）：状态/版本/地址一览、启动/停止/重启服务、首次配置修复、
 > 更新服务端、复制连接信息、查看日志，以及「开机自启」开关（默认关闭）。
-> **关闭面板不会停止服务**；需要停止请点「停止服务」。详见 [docs/PANEL.md](docs/PANEL.md)。
+> **关闭面板不会停止服务**；需要停止请点「停止服务」。详  [docs/PANEL.md](PANEL.md)。
 >
 > 根目录的 `launchers\Start-OCR.bat` / `launchers\Stop-OCR.bat` / `launchers\Update-OCR.bat` / `launchers\Show-OCR-Info.bat`
 > 是面板里同名功能的命令行后备；`tools\start_server.ps1` 只给开发人员前台调试。
@@ -74,7 +74,7 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 
 ### 便携版（不装 Python）
 
-在已配置好的机器上运行 `tools/build_portable.ps1` 生成 `OCR-portable.zip`，拷到新机器解压后**双击 `OCR-Panel.bat` 点「启动服务」**即可（自动提权、生成 token、开防火墙、后台启动）。详见 [docs/DEPLOY.md](docs/DEPLOY.md)。
+在已配置好的机器上运行 `tools/build_portable.ps1` 生成 `OCR-portable.zip`，拷到新机器解压后**双击 `OCR-Panel.bat` 点「启动服务」**即可（自动提权、生成 token、开防火墙、后台启动）。详  [docs/DEPLOY.md](DEPLOY.md)。
 
 启动后如需查看/复制服务器地址、token 和安装地址，在面板上点 **「复制连接信息」**（或双击 `launchers\Show-OCR-Info.bat`），完整信息会自动进剪贴板。
 
@@ -118,7 +118,7 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 
 **无法访问 GitHub 时**：服务端同样托管了脚本。菜单「**从 OCR 服务器更新脚本…**」会打开 `http://<服务器IP>:1205/userscript.user.js`，由 Tampermonkey 检查/重装脚本。它只更新脚本，不更新服务端程序；服务端升级用 `launchers\Update-OCR.bat`。服务端返回的脚本会把 `@updateURL` / `@downloadURL` 改成自身地址，并重新注入当前 token，所以更新后也能自动同步 token。
 
-**公开发布（GreasyFork）**：可把无 token 的公开脚本发布到 GreasyFork，方便搜索“局域网验证码 OCR”。发布文案、分类、隐私说明见 [docs/GREASYFORK.md](docs/GREASYFORK.md)。服务端仍需用户自行部署；局域网内的设备仍建议使用服务器注入地址。
+**公开发布（GreasyFork）**：可把无 token 的公开脚本发布到 GreasyFork，方便搜索“局域网验证码 OCR”。发布文案、分类、隐私说明  [docs/GREASYFORK.md](GREASYFORK.md)。服务端仍需用户自行部署；局域网内的设备仍建议使用服务器注入地址。
 
 > 仓库已配置 GreasyFork GitHub Webhook。**每次修改脚本并 push 前必须严格递增 `@version`**（同版本会被拒绝，用户收不到更新）；发布前运行 `tools\check_version_bump.ps1`。
 
@@ -147,16 +147,28 @@ Invoke-WebRequest http://127.0.0.1:1205/health -UseBasicParsing
 server/         FastAPI 应用、OCR 引擎、配置示例
 userscript/     Tampermonkey 脚本（唯一源，无密钥）
 tools/          部署、构建、测试、基准工具
-docs/           使用文档、部署指南、更新日志、控制面板说明
-tools\install.ps1     首次安装（建 venv + 依赖）
-OCR-Panel.bat   控制面板（推荐日常入口，自动提权 → tools/panel.ps1）
-tools\start_server.ps1 生成配置并启动服务（仅开发前台调试）
-launchers\Start-OCR.bat   便携版一键启动（自动提权）
-launchers\Stop-OCR.bat    便携版一键停止
-launchers\Update-OCR.bat  便携版一键更新（保留 config/python）
-launchers\Show-OCR-Info.bat 显示/复制服务器地址、token、安装地址
-README-FIRST.txt 便携版给使用者的说明
+docs/           全部文档：README-zh、AGENTS、PUBLISH、DEPLOY、CHANGELOG 等
+launchers/      启动、停止、更新等快捷脚本
+assets/         图标资源
+python/         便携版内置的 Python 运行时与依赖
+
+OCR-Panel.bat   根目录唯一入口（首次运行会自动生成带 Logo 的快捷方式）
+README-FIRST.txt 便携版使用说明
+LICENSE
+requirements.txt 依赖清单
 ```
+
+`launchers\` 下的脚本：
+
+```
+launchers\Start-OCR.bat      便携版一键启动（自动提权、配置 token、放行防火墙）
+launchers\Stop-OCR.bat       便携版一键停止
+launchers\Update-OCR.bat     便携版一键更新（保留 config / python）
+launchers\Show-OCR-Info.bat  显示并复制服务器地址、token、安装地址
+```
+
+开发调试入口（日常不使用）：`tools\start_server.ps1`、`tools\restart_server.ps1`、
+`launchers\start_server.bat`。
 
 ## 安全说明
 
@@ -166,11 +178,11 @@ README-FIRST.txt 便携版给使用者的说明
 - 默认只监听局域网：`allowed_clients` 白名单 + `trust_proxy=false`
 - 不要把 1205 端口映射到公网
 
-## 常见问题
+## 常 问题
 
 - **识别结果大小写不对**：菜单「切换验证码大小写（大写/小写/原样）」
-- **识别不准**：`tools/benchmark.py` 跑分定位；见 `docs/README.md`
-- **服务端更新**：`docs/CHANGELOG.md`
+- **识别不准**：`tools/benchmark.py` 跑分定位；见 `README-zh.md`
+- **服务端更新**：`CHANGELOG.md`
 
 ## 许可证
 

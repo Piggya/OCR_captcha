@@ -1,4 +1,4 @@
-﻿# AGENTS.md
+# AGENTS.md
 
 给后续接手开发的 AI Agent 的项目交接手册。**开始修改前请完整阅读这一份，不要另建笔记文件。**
 
@@ -93,30 +93,43 @@ Get-ChildItem -Force | Select-Object Mode,Length,Name
 ## 3. 正式结构
 
 根目录只允许出现下列内容，新增顶层文件前先确认是否真的必要。
+**根目录必须保持极简，让用户一眼看到 `OCR-Panel.bat`；文档一律放 `docs\`。**
 
 ```
 server/          FastAPI 应用、OCR 引擎、config.example.json
 userscript/      唯一油猴脚本源（无 token / 无服务器地址）
 tools/           部署、构建、测试、基准、mock 工具
-docs/            README、DEPLOY、CHANGELOG、GREASYFORK、PANEL
+docs/            全部文档：README-zh、AGENTS、PUBLISH、DEPLOY、CHANGELOG、GREASYFORK、PANEL
 launchers/       面向用户的 .bat 入口
 assets/          logo.png（图标源）、ocr-logo.png（原图）、icon.png、ocr-panel.ico
 .github/         （可选）CI 配置
 
-OCR 控制面板.lnk  推荐入口，带 Logo，自动生成，绝对路径，不进 zip
-OCR-Panel.bat    快捷方式不在时的后备入口
-README-FIRST.txt 便携版中文说明
-README.md        项目说明
+OCR-Panel.bat    根目录唯一入口（首次运行会自动生成带 Logo 的快捷方式）
+README-FIRST.txt 便携版说明（面向用户，排在 OCR-Panel.bat 之后）
 LICENSE
-PUBLISH.md       发布流程说明
 requirements.txt 依赖清单
 .gitignore
-AGENTS.md        本文件
 ```
+
+根目录**不再**放以下文件（已迁入 `docs\`）：
+`README.md` → `docs/README-zh.md`、`AGENTS.md` → `docs/AGENTS.md`、
+`PUBLISH.md` → `docs/PUBLISH.md`。
+
+`docs/` 目录说明：
+
+| 文件 | 用途 |
+|---|---|
+| `README-zh.md` | 项目完整说明（中文），含标题里的 `vX.Y.Z` |
+| `AGENTS.md` | 本文件，AI Agent 交接手册 |
+| `PUBLISH.md` | 发布流程说明 |
+| `DEPLOY.md` | 部署细节 |
+| `CHANGELOG.md` | 开发日志 |
+| `GREASYFORK.md` | GreasyFork 发布说明 |
+| `PANEL.md` | 控制面板说明 |
 
 `launchers/`：`OCR-Panel.bat`（静默提权）、`Start-OCR.bat`（首次配置/修复）、
 `Stop-OCR.bat`、`Update-OCR.bat`、`Show-OCR-Info.bat`、`start_server.bat`（开发调试）。
-日常推荐双击 `OCR 控制面板.lnk`。
+日常推荐双击根目录 `OCR-Panel.bat`。
 
 **路径约定**：`launchers\*.bat` 一律 `cd /d "%~dp0.."` 回到安装根目录；
 `tools\*.ps1` 用 `Join-Path $PSScriptRoot ".."` 推断根目录。
@@ -134,14 +147,14 @@ AGENTS.md        本文件
    `userscript/local-captcha-autofill.user.js` 的 `// @version`，两者必须一致。
 2. 每次更新在 `docs/CHANGELOG.md` 顶部新增 `## X.Y.Z (YYYY-MM-DD)`，
    并在油猴脚本头部 `// CHANGELOG` 加一行摘要。
-3. 版本号变更时同步更新 `docs/README.md` 标题里的 `vX.Y.Z`。
+3. 版本号变更时同步更新 `docs/README-zh.md` 标题里的 `vX.Y.Z`。
 4. **不提交任何密钥、真实 token、真实局域网 IP、账号、本机代理地址。**
 5. 只推送 `main`。不要推送其它分支。
 6. `.ps1` 保持 UTF-8 **BOM**（PowerShell 5.1 需要）。
 7. `.user.js` 必须是无 BOM 的 UTF-8。
 8. 不要删除 `host: "*"`、`@match *://*/*`、`@connect *`（全站匹配是需求）。
 9. `userscript/local-captcha-autofill.user.js` 是唯一脚本源，不要恢复 `templates/`。
-10. 改行为时同步更新 `README.md` / `docs/README.md` / `docs/DEPLOY.md`。
+10. 改行为时同步更新 `docs/README-zh.md` / `docs/DEPLOY.md` / `README-FIRST.txt`。
 11. `/userscript.user.js` 靠 `const INJECTED_CONFIG = null;` 这一行做服务端替换，
     **不要改写法、不要删**；仓库文件必须保持 `null`，token 只能运行时注入。
 12. 局域网注入端点必须保留 `allowed_clients` 校验和 `Cache-Control: no-store`。
@@ -149,6 +162,11 @@ AGENTS.md        本文件
     `server/app.py` 一致，否则 webhook 拒绝。推送前必跑 `tools\check_version_bump.ps1`。
 14. `AGENTS.md` 本身**要提交**（它是给后续 Agent 的交接文档），但内容必须保持干净：
     不写开发过程、不写个人环境信息、不写临时验证步骤。
+15. **Release 必须上传 `OCR-portable.zip` 附件。** 源码 zip 不含 `python\`，
+    零环境的新电脑无法启动（会报 `No module named 'ddddocr'`）。只发源码 zip
+    等于把安装门槛甩给用户。流程见 `docs/PUBLISH.md` 第 4.1 节。
+16. **根目录只放 `OCR-Panel.bat` 和 `README-FIRST.txt`**，其余文档一律进 `docs\`。
+    用户解压后第一眼必须看到 `OCR-Panel.bat`。
 
 ---
 
@@ -190,14 +208,14 @@ uvicorn 必须在仓库根目录运行；`restart_server.ps1` 已处理工作目
 
 - `server/app.py`：`__version__ = "X.Y.Z"`
 - `userscript/local-captcha-autofill.user.js`：`// @version      X.Y.Z`
-- `docs/README.md`：标题 `# 土著内网验证码识别 vX.Y.Z`
+- `docs/README-zh.md`：标题 `# 土著内网验证码识别 vX.Y.Z`
 - `docs/CHANGELOG.md`：顶部新增一节
-- 油猴头部 `// CHANGELOG (see docs/README.md):` 下新增一行摘要
+- 油猴头部 `// CHANGELOG (see docs/README-zh.md):` 下新增一行摘要
 
 检索旧版本号确认没漏改：
 
 ```powershell
-Select-String -Path server\app.py,userscript\local-captcha-autofill.user.js,docs\README.md,docs\CHANGELOG.md -Pattern '0\.9\.1'
+Select-String -Path server\app.py,userscript\local-captcha-autofill.user.js,docs\README-zh.md,docs\CHANGELOG.md -Pattern '0\.9\.1'
 ```
 
 CHANGELOG 格式：
@@ -440,7 +458,7 @@ Target=`wscript.exe //nologo tools\panel_launch.vbs`；后备 `OCR-Panel.bat`（
 ## 12. Definition of Done
 
 1. 代码改完，行为符合需求
-2. 版本号两处一致，`docs/README.md` 标题已更新
+2. 版本号两处一致，`docs/README-zh.md` 标题已更新
 3. `docs/CHANGELOG.md` 与油猴头部 CHANGELOG 已更新
 4. 第 8 节全部通过
 5. **第 9 节清理清单全部满足**

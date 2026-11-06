@@ -47,6 +47,28 @@ if (-not (Test-Path -LiteralPath $python)) {
     $python = $cmd.Source
 }
 
+# Probe the interpreter BEFORE launching anything. Without this, a system
+# Python that has uvicorn but not ddddocr starts uvicorn fine and then dies
+# 40 lines deep into a traceback, leaving the user with "service stopped" and
+# no idea why. python_env.ps1 owns the candidate order and the probe.
+. (Join-Path $PSScriptRoot "python_env.ps1")
+$envCheck = Resolve-OcrPython -Root $root
+if (-not $envCheck.Ok) {
+    Write-Host "[ERROR] The OCR service cannot start: Python dependencies are missing." -ForegroundColor Red
+    Write-Host ""
+    ($envCheck.Attempts | ForEach-Object {
+        Write-Host ("  [{0}] {1}" -f $_.Source, $_.Path)
+        Write-Host ("         {0}" -f $_.Detail)
+    })
+    Write-Host ""
+    Write-Host "Fix: run launchers\Start-OCR.bat once (it installs the dependencies),"
+    Write-Host "     or run:  python -m pip install -r requirements.txt"
+    Write-Host ""
+    Write-Host ("Reason: " + $envCheck.Reason) -ForegroundColor Yellow
+    exit 2
+}
+$python = $envCheck.Path
+
 $running = Get-ListenerPid $port
 if ($running -gt 0 -and -not $Force) {
     Write-Host ("Service already running on port {0} (PID {1})." -f $port, $running)
