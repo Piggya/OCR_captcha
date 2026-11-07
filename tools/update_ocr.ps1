@@ -163,12 +163,55 @@ try {
     }
 
     Write-Phase 50 ("Stopping the service on port " + $port + " (if running)...")
+    # Only stop our own uvicorn. Blindly killing the port owner destroyed an
+    # unrelated service during testing; anything we cannot prove is ours is
+    # reported instead (see the same rule in setup_new_server.ps1).
     $connections = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-    if ($connections) {
-        $connections | ForEach-Object {
-            Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+    foreach ($conn in @($connections)) {
+        $ownerId = [int]$conn.OwningProcess
+        if ($ownerId -le 0) { continue }
+        $info = Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = $ownerId" -ErrorAction SilentlyContinue
+        $cmd = if ($info) { [string]$info.CommandLine } else { "" }
+        $exe = if ($info) { [string]$info.ExecutablePath } else { "" }
+        $isOurServer = $cmd -match 'uvicorn.*server\.app:app'
+        $isOurPython = $false
+        if ($exe) {
+            try {
+                # Trailing separator matters: StartsWith("D:\OCR") also matches
+                # "D:\OCR-old\...", which would let the previous install's
+                # python be killed as if it were ours.
+                $rootPrefix = [IO.Path]::GetFullPath($root).TrimEnd('\', '/') +
+                    [IO.Path]::DirectorySeparatorChar
+                $isOurPython = ([IO.Path]::GetFullPath($exe)).StartsWith(
+                    $rootPrefix, [StringComparison]::OrdinalIgnoreCase)
+            } catch { $isOurPython = $false }
         }
-        Start-Sleep -Seconds 2
+        if ($isOurServer -and $isOurPython) {
+            Stop-Process -Id $ownerId -Force -ErrorAction SilentlyContinue
+        } else {
+            Write-Host ("  [STOPPED] Port " + $port + " is held by PID " + $ownerId +
+                ", which is not this OCR service. Not touching it.") -ForegroundColor Red
+            if ($exe) { Write-Host ("            " + $exe) -ForegroundColor Red }
+            Write-Host "            Close that program or change the port, then retry." -ForegroundColor Yellow
+            throw "Port $port is occupied by a foreign process (PID $ownerId); refusing to terminate it."
+        }
+    }
+    if ($connections) {
+        # Wait for the socket to actually disappear. A flat 2 s sleep is not
+        # enough on a slow machine (AGENTS.md requires polling the port).
+        $deadline = (Get-Date).AddSeconds(20)
+        while ((Get-Date) -lt $deadline) {
+            $still = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            if (-not $still) { break }
+            Start-Sleep -Milliseconds 250
+        }
+        $still = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($still) {
+            Write-Host ("  [WARNING] Port " + $port + " is still occupied by PID " +
+                $still.OwningProcess + " after 20 s.") -ForegroundColor Yellow
+        }
     }
 
     $backup = Join-Path $root ("backup-" + (Get-Date -Format "yyyyMMdd-HHmmss"))

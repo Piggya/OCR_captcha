@@ -9,9 +9,13 @@ Exits 0 if all expectations pass, 1 otherwise.
 """
 import argparse
 import base64
+import ipaddress
 import json
 import os
+import socket
+import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 
@@ -30,6 +34,110 @@ PNG_1x1 = bytes([
     0x42, 0x60, 0x82,
 ])
 PNG_B64 = "data:image/png;base64," + base64.b64encode(PNG_1x1).decode()
+
+
+def _probed_lan_ipv4():
+    """Same preference order as server/app.py: outbound route, then hostname."""
+    found = []
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.settimeout(0.2)
+            probe.connect(("10.255.255.255", 1))
+            found.append(probe.getsockname()[0])
+    except OSError:
+        pass
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            found.append(info[4][0])
+    except OSError:
+        pass
+    for ip in found:
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            continue
+        if addr.is_loopback or addr.is_link_local:
+            continue
+        return ip
+    return "127.0.0.1"
+
+
+def _is_bound_locally(ip):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.bind((ip, 0))
+        return True
+    except OSError:
+        return False
+
+
+def _expected_public_base(cfg):
+    """The base URL the server should inject.
+
+    Mirrors server/app.py get_public_base_url(): configured work_lan_ip when it
+    is really bound to this host, otherwise the probed LAN address. Deliberately
+    independent of BASE, which is just where the test connects to.
+    """
+    port = int(cfg.get("port", 1205))
+    configured = str(cfg.get("work_lan_ip") or "").strip()
+    host = configured if configured and _is_bound_locally(configured) else _probed_lan_ipv4()
+    return f"http://{host}:{port}"
+
+
+def probe_panel_ast(panel_path):
+    """Summarise panel.ps1 from its PowerShell AST.
+
+    Substring checks cannot tell code from comments, so a marker inside a
+    comment satisfied the old assertions. Parsing gives real functions, real
+    command names and the actual body of each event handler.
+
+    Runs through a temporary .ps1 file with -File: passing a multi-line script
+    via -Command / -EncodedCommand silently produced an empty result.
+    """
+    probe = r'''
+$ErrorActionPreference = "Stop"
+$tokens = $null
+$errors = $null
+$ast = [System.Management.Automation.Language.Parser]::ParseFile("__PANEL__", [ref]$tokens, [ref]$errors)
+
+$funcs = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)
+$cmds = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.CommandAst] }, $true)
+$invokes = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.InvokeMemberExpressionAst] }, $true)
+$assigns = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst] }, $true)
+
+$handlers = @{}
+foreach ($m in $invokes) {
+    if ($m.Member -is [System.Management.Automation.Language.StringConstantExpressionAst] -and
+        $m.Member.Value -like "Add_*") {
+        $handlers[$m.Member.Value] = (@($m.Arguments) | ForEach-Object { $_.Extent.Text }) -join "|"
+    }
+}
+
+@{
+    functionNames = @($funcs | ForEach-Object { $_.Name })
+    commands      = @($cmds | ForEach-Object { $_.GetCommandName() } | Where-Object { $_ })
+    handlers      = $handlers
+    scriptAssignments = @($assigns | ForEach-Object { $_.Left.Extent.Text } |
+        Where-Object { $_ -like '$script:*' })
+} | ConvertTo-Json -Depth 5 -Compress
+'''.replace("__PANEL__", panel_path.replace('"', '`"'))
+
+    fd, probe_path = tempfile.mkstemp(suffix=".ps1", prefix="panel_ast_")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8-sig", newline="\r\n") as fh:
+            fh.write(probe)
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", probe_path],
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180,
+        )
+        if proc.returncode != 0 or not (proc.stdout or "").strip():
+            raise RuntimeError("panel AST probe failed: " + (proc.stderr or "")[:300])
+        return json.loads(proc.stdout)
+    finally:
+        try:
+            os.remove(probe_path)
+        except OSError:
+            pass
 
 
 def call(path, body=None, headers=None):
@@ -79,15 +187,32 @@ def main():
 
     # 0.9.1: the LAN endpoint must embed the current URL + token, while the
     # repository copy must stay token-free (never print b here: it has a token).
+    #
+    # 0.12.2: the URL no longer comes from the request. Mirror the server's
+    # own rule (configured work_lan_ip if bound here, else the probed LAN
+    # address) so the assertion still means "the right address was injected"
+    # without re-introducing the Host-header dependency that was the bug.
+    expected_base = _expected_public_base(cfg)
     s, b = call("/userscript.user.js")
     injected = (
         s == 200
         and "const INJECTED_CONFIG = {" in b
-        and f'"serverUrl": "{BASE}"' in b
+        and f'"serverUrl": "{expected_base}"' in b
         and f'"token": "{token}"' in b
-        and f"// @updateURL    {BASE}/userscript.user.js" in b
+        and f"// @updateURL    {expected_base}/userscript.user.js" in b
     )
     check("userscript injects URL + token (LAN)", injected, True)
+
+    # The Host header is attacker-controlled; it must never reach the response.
+    # Before 0.12.2 `Host: attacker.evil.com` rewrote serverUrl/@updateURL and
+    # leaked the plaintext token to that domain.
+    s, b_host = call("/userscript.user.js", headers={"Host": "attacker.evil.com"})
+    check(
+        "userscript ignores forged Host header",
+        s == 200 and "attacker.evil.com" not in b_host
+        and f'"serverUrl": "{expected_base}"' in b_host,
+        True,
+    )
     repo_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         "userscript",
@@ -185,18 +310,34 @@ def main():
         for name in ("setup_new_server.ps1", "update_ocr.ps1", "panel.ps1")
     )
     check("shortcut recreated on install/update/panel", hook_ok, True)
-    panel_text = open(os.path.join(root, "tools", "panel.ps1"), "r", encoding="utf-8-sig").read()
-    panel_ok = (
-        # Closing the panel must never stop the service; only the button does.
-        "Get-ListenerPid" in panel_text
-        and "FormClosing" in panel_text
-        and "Stop-Process" in panel_text
-        and "Invoke-Schtasks" in panel_text
+
+    # Control-panel structure is checked from the PowerShell AST, not by
+    # grepping panel.ps1 for marker words: the old substring checks passed as
+    # long as a name appeared in a comment, so they verified nothing.
+    panel_facts = probe_panel_ast(os.path.join(root, "tools", "panel.ps1"))
+    panel_funcs = set(panel_facts.get("functionNames") or [])
+    panel_cmds = set(panel_facts.get("commands") or [])
+    panel_handlers = panel_facts.get("handlers") or {}
+    panel_assigns = set(panel_facts.get("scriptAssignments") or [])
+
+    closing = panel_handlers.get("Add_FormClosing", "")
+    check(
+        "control panel keep-service-on-close",
+        bool(closing)
+        and not any(k in closing for k in ("Stop-Process", "taskkill", "Terminate"))
+        and "Get-ListenerPid" in panel_funcs
+        and ("Stop-Process" in panel_cmds or "taskkill" in panel_cmds),
+        True,
+        "closing=%r" % closing[:80],
     )
-    check("control panel keep-service-on-close", panel_ok, True)
-    info_ok = all(
-        marker in panel_text
-        for marker in ("txtInstall", "txtToken", "Get-ShareMessage", "Copy-Text", "Get-ServiceState")
+
+    info_ok = (
+        all(name in panel_funcs for name in ("Get-ShareMessage", "Copy-Text", "Get-ServiceState"))
+        and all(name in panel_cmds for name in ("Get-ShareMessage", "Copy-Text", "Get-ServiceState"))
+        and all(
+            var in panel_assigns
+            for var in ("$script:serverUrl", "$script:token", "$script:userscriptUrl")
+        )
     )
     check("control panel shows url+token+state", info_ok, True)
     metadata_ok = all(tag in repo_text for tag in (

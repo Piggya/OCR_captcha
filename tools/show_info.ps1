@@ -75,7 +75,27 @@ function Get-PrimaryLanIPv4 {
     return "127.0.0.1"
 }
 
-$lanIp = [string]$config.work_lan_ip
+# Only trust the configured address if it is actually bound to this machine
+# AND is routable; loopback / link-local / 0.0.0.0 are bindable here but would
+# point other devices at themselves (a stale value made every URL unreachable).
+$lanIp = ([string]$config.work_lan_ip).Trim()
+$lanIpIsUsable = $false
+if ($lanIp) {
+    $parsed = $null
+    if ([System.Net.IPAddress]::TryParse($lanIp, [ref]$parsed) -and
+        -not [System.Net.IPAddress]::IsLoopback($parsed) -and
+        -not $parsed.Equals([System.Net.IPAddress]::Any) -and
+        $lanIp -notlike "169.254.*") {
+        $lanIpIsUsable = $true
+    }
+}
+if ($lanIpIsUsable) {
+    $bound = Get-NetIPAddress -IPAddress $lanIp -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if (-not $bound) { $lanIp = "" }
+} else {
+    $lanIp = ""
+}
 if ([string]::IsNullOrWhiteSpace($lanIp)) {
     $lanIp = Get-PrimaryLanIPv4
 }

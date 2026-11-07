@@ -304,18 +304,70 @@ if (Test-Path -LiteralPath $mkShortcut) {
     }
 }
 
-# Kill any existing python that might hold the configured port
-$portOwner = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
-    Select-Object -First 1 -ExpandProperty OwningProcess
-if ($portOwner) {
-    Write-Host "      Port $port is in use by PID $portOwner, stopping it..."
-    try {
-        Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = $portOwner" |
-            Invoke-CimMethod -MethodName Terminate 2>&1 | Out-Null
-    } catch {
-        Stop-Process -Id $portOwner -Force -ErrorAction SilentlyContinue
+# Stop a previous instance of THIS project on the configured port.
+# Only a process that is demonstrably our own uvicorn is terminated: killing
+# whatever happens to own the port once took down an unrelated service and let
+# a throwaway uvicorn from a temp directory take over. Anything else is
+# reported and the script stops instead of destroying it.
+$portOwner = 0
+try {
+    $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($conn) { $portOwner = [int]$conn.OwningProcess }
+} catch { }
+if ($portOwner -gt 0) {
+    $ownerInfo = Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = $portOwner" -ErrorAction SilentlyContinue
+    $ownerCmd = if ($ownerInfo) { [string]$ownerInfo.CommandLine } else { "" }
+    $ownerExe = if ($ownerInfo) { [string]$ownerInfo.ExecutablePath } else { "" }
+
+    $isOurServer = $ownerCmd -match 'uvicorn.*server\.app:app'
+    $isOurPython = $false
+    if ($ownerExe) {
+        try {
+            # Compare with a trailing separator: a plain StartsWith("D:\OCR")
+            # also matches "D:\OCR-old\..." and "D:\OCR2\...", so the previous
+            # install's python would be treated as ours and killed.
+            $rootPrefix = [IO.Path]::GetFullPath($root).TrimEnd('\', '/') +
+                [IO.Path]::DirectorySeparatorChar
+            $isOurPython = ([IO.Path]::GetFullPath($ownerExe)).StartsWith(
+                $rootPrefix, [StringComparison]::OrdinalIgnoreCase)
+        } catch { $isOurPython = $false }
     }
-    Start-Sleep -Seconds 3
+
+    if ($isOurServer -and $isOurPython) {
+        Write-Host "      Port $port is held by this project's server (PID $portOwner), stopping it..."
+        try {
+            Stop-Process -Id $portOwner -Force -ErrorAction SilentlyContinue
+        } catch {
+            Write-Host ("      Could not stop PID ${portOwner}: " + $_.Exception.Message) -ForegroundColor Yellow
+        }
+        # Stop-Process returns before the socket is gone; wait for the port
+        # itself rather than sleeping a fixed 2 s (slow disks / AV can take
+        # much longer), otherwise the restart below hits "address in use".
+        $deadline = (Get-Date).AddSeconds(20)
+        while ((Get-Date) -lt $deadline) {
+            $still = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            if (-not $still) { break }
+            Start-Sleep -Milliseconds 250
+        }
+        $still = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($still) {
+            Write-Host ("      [WARNING] Port $port is still occupied by PID " + $still.OwningProcess +
+                " after 20 s; it may be a leftover socket in TIME_WAIT.") -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host ""
+        Write-Host "      [STOPPED] Port $port is in use by a process that is NOT this OCR service." -ForegroundColor Red
+        Write-Host "      PID        : $portOwner" -ForegroundColor Red
+        if ($ownerExe) { Write-Host "      Executable : $ownerExe" -ForegroundColor Red }
+        if ($ownerCmd) { Write-Host "      Command    : $ownerCmd" -ForegroundColor Red }
+        Write-Host ""
+        Write-Host "      Refusing to terminate it. Close that program, or change the port in" -ForegroundColor Yellow
+        Write-Host "      server\config.json, then run this again." -ForegroundColor Yellow
+        exit 1
+    }
 }
 
 # Clear __pycache__ to ensure fresh code

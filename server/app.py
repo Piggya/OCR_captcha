@@ -2,8 +2,10 @@
 import hashlib
 import ipaddress
 import json
+import os
 import re
 import secrets
+import socket
 import time
 import uuid
 from collections import OrderedDict
@@ -21,7 +23,7 @@ from .ocr_engine import (
     decode_image_data,
 )
 
-__version__ = "0.12.0"
+__version__ = "0.12.2"
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -46,8 +48,24 @@ OCR_ENGINE = create_engine(CONFIG)
 # inference to a small thread pool so FastAPI's event loop keeps accepting
 # new requests, and several recognitions can run in parallel against a
 # single ddddocr instance (which releases the GIL between tensor ops).
+#
+# The pool used to be hard-coded to 2 workers, which capped throughput near
+# 18 rps while the model itself could serve ~250 rps on the same image. Scale
+# with the CPU instead: a quarter of the logical cores, clamped to 2..8.
+# More workers than that only add context switching (and memory) on a LAN box
+# serving a handful of browsers.
+def _executor_worker_count() -> int:
+    override = os.environ.get("OCR_EXECUTOR_WORKERS", "").strip()
+    if override:
+        try:
+            return max(1, int(override))
+        except ValueError:
+            pass
+    return max(2, min(8, (os.cpu_count() or 4) // 4))
+
+
 _ocr_executor = ThreadPoolExecutor(
-    max_workers=int(__import__("os").environ.get("OCR_EXECUTOR_WORKERS", "2")),
+    max_workers=_executor_worker_count(),
     thread_name_prefix="ocr",
 )
 
@@ -122,10 +140,21 @@ def _startup() -> None:
     except Exception:  # noqa: BLE001 - warmup failure is non-fatal
         pass
 
+    # Trim once at boot. Waiting a full interval first meant a frequently
+    # restarted server never reached cleanup at all, and a busy burst could
+    # push a bucket far past its cap before the first sweep.
+    try:
+        _cleanup_debug_buckets()
+    except Exception:  # noqa: BLE001 - cleanup must never block startup
+        pass
+
     async def _periodic_debug_cleanup() -> None:
         while True:
             await asyncio.sleep(_DEBUG_CLEANUP_INTERVAL)
-            _cleanup_debug_buckets()
+            try:
+                _cleanup_debug_buckets()
+            except Exception:  # noqa: BLE001 - keep the loop alive
+                pass
 
     try:
         loop = asyncio.get_event_loop()
@@ -147,6 +176,91 @@ def get_client_host(request: Request) -> str:
         if xff:
             return xff.split(",")[0].strip()
     return request.client.host if request.client else ""
+
+
+def _lan_ipv4_addresses() -> list[str]:
+    """Return this machine's non-loopback IPv4 addresses, preferred first.
+
+    Used to build user-facing URLs without trusting the ``Host`` header. Kept
+    cheap (a couple of socket calls) and never raises: an empty list simply
+    means the caller falls back to loopback.
+    """
+    found: list[str] = []
+    try:
+        # connect() on a UDP socket sends nothing; it only lets the OS pick the
+        # outbound interface, which is normally the LAN one.
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.settimeout(0.2)
+            probe.connect(("10.255.255.255", 1))
+            found.append(probe.getsockname()[0])
+    except OSError:
+        pass
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            found.append(info[4][0])
+    except OSError:
+        pass
+
+    ordered: list[str] = []
+    for ip in found:
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            continue
+        # Skip loopback and link-local; keep private/global addresses.
+        if addr.is_loopback or addr.is_link_local:
+            continue
+        if ip not in ordered:
+            ordered.append(ip)
+    return ordered
+
+
+def _configured_lan_ip() -> str:
+    """Return ``work_lan_ip`` only if this host actually owns that address.
+
+    A config copied from another machine (or a stale DHCP lease) used to make
+    the server advertise an unreachable address. Probing is cheap and does not
+    need the address to be online, so the check runs per call.
+
+    Routable addresses only: loopback, link-local and the unspecified address
+    (0.0.0.0) are all bindable here, but handing them to another machine means
+    "your own loopback" or "nothing at all". Those fall through to probing.
+    """
+    configured = str(CONFIG.get("work_lan_ip") or "").strip()
+    if not configured:
+        return ""
+    try:
+        addr = ipaddress.ip_address(configured)
+    except ValueError:
+        return ""
+    if addr.is_loopback or addr.is_link_local or addr.is_unspecified:
+        return ""
+    try:
+        # udp connect() never transmits; it only tests routability from a local
+        # source address. An unreachable IP raises, which means "not ours".
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.bind((configured, 0))
+        return configured
+    except OSError:
+        return ""
+
+
+def get_public_base_url() -> str:
+    """Build the base URL handed to LAN clients (userscript injection).
+
+    SECURITY: this deliberately does **not** use ``request.base_url``. That
+    value comes straight from the ``Host`` header, so any client could ask for
+    ``Host: attacker.example`` and receive a script whose ``serverUrl`` and
+    ``@updateURL`` point at the attacker - and whose embedded token leaks with
+    it. Trusting configuration instead of the request closes that hole.
+
+    Order: explicit ``work_lan_ip`` (only when bound to this host) -> probed
+    LAN address -> loopback. The port always comes from configuration, never
+    from Host.
+    """
+    port = int(CONFIG.get("port", 1205))
+    host = _configured_lan_ip() or next(iter(_lan_ipv4_addresses()), "127.0.0.1")
+    return f"http://{host}:{port}"
 
 
 def client_allowed(host: str) -> bool:
@@ -245,11 +359,8 @@ def userscript(request: Request) -> Response:
         ) from exc
     content = content.replace("\r\n", "\n").replace("\r", "\n")
 
-    base_url = str(request.base_url).rstrip("/")
-    if not re.fullmatch(r"https?://[A-Za-z0-9.\-:\[\]]+", base_url):
-        # Defensive: never splice an arbitrary Host header into the comment
-        # lines below. Ordinary IPs/hostnames (incl. IPv6) pass the check.
-        base_url = f"http://127.0.0.1:{CONFIG.get('port', 1205)}"
+    # Never derive this from the Host header (see get_public_base_url).
+    base_url = get_public_base_url()
     token = str(CONFIG.get("api_token") or "")
     if token in {"", "change-me-to-a-random-internal-token"}:
         # Keep the URL so the manual prompt is pre-filled, but never hand out
@@ -323,6 +434,21 @@ def _save_debug_image(image_bytes: bytes, text: str, site: str | None, bucket: s
         suffix = uuid.uuid4().hex[:6]
         name = f"{ts}-{ms:03d}_{safe_site}_{safe_text}_{suffix}.png"
         (debug_dir / name).write_bytes(image_bytes)
+
+        # Cheap safety net: the periodic sweep is slow and restarts reset it,
+        # so a burst could push a bucket far past its cap. Count lazily and
+        # only sweep once the bucket has clearly overflowed (1.25x the cap).
+        try:
+            max_keep = int(CONFIG.get("max_debug_images_per_bucket", 100))
+            if max_keep > 0:
+                png_count = sum(
+                    1 for p in debug_dir.iterdir()
+                    if p.is_file() and p.suffix.lower() == ".png"
+                )
+                if png_count > max_keep + max_keep // 4:
+                    _cleanup_debug_buckets()
+        except Exception:  # noqa: BLE001 - never break the request over this
+            pass
     except Exception:  # noqa: BLE001 - debug must never break the request
         pass
 

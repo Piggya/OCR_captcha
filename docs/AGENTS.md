@@ -167,6 +167,25 @@ requirements.txt 依赖清单
     等于把安装门槛甩给用户。流程见 `docs/PUBLISH.md` 第 4.1 节。
 16. **根目录只放 `OCR-Panel.bat` 和 `README-FIRST.txt`**，其余文档一律进 `docs\`。
     用户解压后第一眼必须看到 `OCR-Panel.bat`。
+17. **`/userscript.user.js` 返回的地址不得取自请求**。`Host` 是客户端可控的，
+    拿它拼 `serverUrl` / `@updateURL` 等于把更新源和明文 token 一起交给攻击者。
+    一律走 `get_public_base_url()`（配置或探测的本机地址）。任何人不要"简化"回
+    `request.base_url`。
+18. **按端口杀进程前必须校验身份**。占用端口的进程要同时满足「命令行含
+    `uvicorn.*server.app:app`」与「可执行文件在本目录下」才允许终止，否则只报告
+    并退出。曾因无条件 Terminate 杀掉无关服务，还让临时目录的 uvicorn 接管了端口。
+19. **`work_lan_ip` 必须验证真的绑定在本机**。配置可能来自别的机器或旧 DHCP 租约，
+    不校验就会把不可达地址发给所有局域网设备（面板、自检、`show_info`、服务端注入
+    四处都要校验，不在就回退到自动探测）。**还要排除回环 / 链路本地 / `0.0.0.0`**：
+    它们在本机可绑定，但发给别人指的是「对方自己的回环」或干脆无效。
+20. **判断「是不是本项目的进程」必须带路径分隔符**。`StartsWith("D:\OCR")` 会同时
+    匹配 `D:\OCR-old`、`D:\OCR2`，导致把旧版安装的 python 当成自己的杀掉。用
+    `GetFullPath($root).TrimEnd('\') + '\'` 后再比较。
+21. **停完服务要轮询端口，不要固定 `Start-Sleep`**。`Stop-Process` 返回时套接字
+    可能还在，慢机器上 2 秒不够；统一每 250ms 查一次、最长 20 秒，端口空了立即继续。
+22. **`panel_launch.vbs` 必须保存为 UTF-16 LE + BOM**。VBScript 在 UTF-8 / ASCII 下
+    读不了中文，会被写成 `?`，用户看到的就是一串问号。改这个文件时注意别被编辑器
+    转成 UTF-8。
 
 ---
 
@@ -283,6 +302,12 @@ python -X utf8 tools\test_e2e.py
 
 必须全部 `[OK]`，不能有 FAIL。测试数量随新增用例变化，**以“无 FAIL”为准，不要写死数字**。
 
+**不要用「文件里出现过某个词」来做断言**：`"Stop-Process" in panel_text` 这类检查
+写进注释也能通过，等于没测。结构化文件（`.ps1` / `.py`）要用解析器看真实结构——
+`tools/test_e2e.py` 的 `probe_panel_ast()` 用 PowerShell AST 取函数名、命令调用
+和事件处理器实体，而不是匹配子串。新增此类断言时，先故意把对应代码删掉或注释掉，
+确认断言真的会变红，再收工。
+
 ### 8.4 密钥扫描
 
 ```powershell
@@ -382,7 +407,9 @@ git ls-remote origin refs/heads/main refs/tags/vX.Y.Z
 - ddddocr 不能可靠保留大小写；大小写由客户端 `rule.letterCase`
   （`upper`/`lower`/`preserve`）处理，默认 `upper`，不要改用 `set_ranges`。
 - `_base64_decode` **不要**加入尾部 `skip_bytes` 裁剪，会让 JPEG 全部 400。
-- `server/config.json` 的 `work_lan_ip` 用于打印给局域网设备的地址；换机器后改成新 IP 或留空自动探测。
+- `server/config.json` 的 `work_lan_ip` 用于打印给局域网设备的地址；换机器后改成新 IP
+  或留空自动探测。**写错的地址不会再被采信**：面板、`show_info.ps1`、`get_public_base_url()`
+  都会先确认该 IP 绑定在本机网卡上，否则回退到探测结果。
 - 服务端代码改动需要重启 uvicorn；油猴脚本改动通过 `/userscript.user.js` 立即生效。
 - `/userscript.user.js` 响应含真实 token，只对 `allowed_clients` 返回；
   验证时只输出布尔值，不要贴进日志、issue 或聊天。
@@ -419,6 +446,36 @@ Target=`wscript.exe //nologo tools\panel_launch.vbs`；后备 `OCR-Panel.bat`（
 → `launchers\OCR-Panel.bat` → 同一个 VBS → `tools/panel.ps1`（UTF-8 BOM）。
 
 - 关闭面板**不停服务**；停止服务只能点「停止服务」（按端口找 PID 再 `Stop-Process`）。
+- **单实例靠全局 Mutex `Global\OcrControlPanel`**：启动时 `WaitOne(0)` 失败就把已有
+  窗口切到前台并直接 `return`，`Add_FormClosing` 里释放。不要退回「按进程名数一数」的做法
+  ——每多一个提权面板都是普通权限杀不掉的残留。新增任何「先启动再判断」的逻辑时，
+  注意 `-SelfTest` 必须跳过判重。
+- **UI 线程上禁止同步跑外部脚本或联网**。`start_service_bg.ps1` 要探测解释器、启动
+  uvicorn、加载 ONNX 模型，耗时 7~18 秒；早先在 `Add_Click` 里直接
+  `& powershell -File $startScript`，窗口整段时间卡死、Windows 显示「未响应」。
+  正确做法（见 `Start-OcrServiceFromPanel`）：`[powershell]::Create()` +
+  `BeginInvoke()` 在后台 runspace 执行，再用 `System.Windows.Forms.Timer`
+  轮询 `$handle.IsCompleted`，完成后 `EndInvoke()` 收输出。
+  按钮期间禁用并显示「启动中…」，完成后恢复。
+  `Add_Shown` / `Timer.Tick` 里同样不能同步起子进程（`make_shortcut.ps1` 也是
+  延迟到定时器里异步启动的）。
+  「检查更新」也踩过同一个坑：在点击事件里同步调 `Get-OnlineVersion` 联网，
+  网络不通时窗口卡死 48 秒。现在同样走后台 runspace + 定时器。
+- **新 runspace 看不到本脚本的函数**。`[powershell]::Create()` 是干净的运行空间，
+  `AddCommand("本脚本里的函数名")` 会报「无法将……识别为 cmdlet」。要么像启动服务那样
+  传**脚本文件路径**，要么把函数定义整段用 `AddScript()` 送进去再调用
+  （见「检查更新」里拼接 `(Get-Command Get-OnlineVersion).Definition` 的写法）。
+- **忙碌守卫 `$script:svcBusy` 要配套绕过机制**：重启路径先置位 `svcBusy=$true`
+  再调启动函数，会被函数开头的守卫直接 return，表现为「重启后服务不再起来」。
+  重启必须传 `-AfterStop`（见 `Start-OcrServiceFromPanel` 的 param 块）。
+- **绝对不要在轮询里用 `Get-NetTCPConnection`**。它在 PowerShell 5.1 上单次调用
+  约 **950 ms**（每次遍历整张 TCP 表），面板每 3 秒刷新、启动/停止/重启时每 250ms
+  轮询，一个操作能被它拖慢 3~10 秒。统一走 `panel.ps1` / `start_service_bg.ps1`
+  里的 `Get-ListenerPid`，它内部用 `iphlpapi.dll` 的 `GetExtendedTcpTable`
+  P/Invoke（单次 0.27 ms），失败才回退到 cmdlet。
+- **端口释放有延迟**：`Stop-Process -Force` 返回后，进程还要 1~2 秒才真正退出，
+  端口在这之后才释放。重启必须**等端口真正空了**再启动新进程，否则新 uvicorn
+  会因「address already in use」失败。停止/重启都要带超时（本项目用 20 秒）。
 - 开机自启默认关闭，`schtasks` 建 `OCR 服务自启` 登录任务，动作是隐藏运行
   `tools/start_service_bg.ps1`（只启动服务、不改配置、不弹 UAC）。
 - 调 `schtasks.exe` 必须走 `Invoke-Schtasks` 包装，否则在
@@ -427,6 +484,17 @@ Target=`wscript.exe //nologo tools\panel_launch.vbs`；后备 `OCR-Panel.bat`（
   （不弹窗口，不打印 token，只输出 `token_present` / `token_len`）。
 - **快捷方式不要指向 `.bat`**：会闪 cmd 窗口，图标也会变成 cmd 默认图标；
   也不要在 `.bat` 里加 `Start-Process -Verb RunAs`，会多闪一个窗口。
+- **`.bat` 里禁止任何前台慢操作**。双击 `.bat` 时 cmd.exe 必然先开一个控制台，
+  而且这个控制台**只在本文件执行完才关闭**。早先 `OCR-Panel.bat` 内联调
+  `powershell -File make_icon.ps1` / `make_shortcut.ps1`，导致黑窗口停留 14 秒
+  （用户描述为“打开面板会保留一个 powershell 框”）。现在 `.bat` 只做一件事：
+  `start "" /b wscript.exe //nologo tools\panel_launch.vbs` 后立刻 `exit /b`，
+  实测 0.14 秒关闭。图标/快捷方式生成全部移入 `tools\panel_launch.vbs`，
+  用 `ShellExecute(..., "open", 0)` 异步隐藏执行，不阻塞面板。
+- **验证“无窗口”要看 `IsWindowVisible`**，不能只看类名。每个 powershell 进程
+  都带一个**隐藏的** `ConsoleWindowClass`（标题「管理员: Windows PowerShell」），
+  它正常且不可见；误报通常来自旧进程残留或测试脚本自身的 `cmd`。判据：
+  启动后可见控制台窗口数应保持不变，且 `.lnk`（`wscript`）路径下应为 0。
 - `.bat` 图标由系统固定无法自定义，带图标的入口只能是 `.lnk`。快捷方式含绝对路径，
   **不打包**，由 `setup_new_server.ps1` / `update_ocr.ps1` / `panel.ps1`（`Add_Shown`）
   调用 `tools\make_shortcut.ps1` 重建；`build_portable.ps1` 打包时剔除残留 `.lnk`。
@@ -452,6 +520,13 @@ Target=`wscript.exe //nologo tools\panel_launch.vbs`；后备 `OCR-Panel.bat`（
   `Unknown: ChildProcess.kill`，但服务可能已启动；**以 `/version` 实际响应为准**。
 - 提权会话与普通会话隔离：跨权限截图、`PrintWindow`、`mouse_event` 都不可靠，
   验证面板优先用 UI Automation 读控件树。
+- **UI Automation 点不动自绘按钮**（`New-StyleButton`）：从非 STA 宿主调用时
+  `GetCurrentPattern(InvokePattern)` 抛「不支持的模式」，`PostMessage(WM_LBUTTONDOWN)`
+  也不会触发 WinForms 的 `Click`。要验证按钮行为，用
+  `SetCursorPos` + `mouse_event` 发**真实鼠标事件**（先 `SetForegroundWindow`），
+  或枚举子窗口句柄后匹配标题指纹。
+- **中文标题在管道里会被控制台代码页吃掉**，导致字符串比较永远失败。
+  比较按钮文字时用「长度 + 字符哈希」指纹，或从码点构造字符串，别直接比对中文。
 
 ---
 

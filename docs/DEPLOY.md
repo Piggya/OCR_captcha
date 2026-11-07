@@ -174,7 +174,7 @@ Get-NetTCPConnection -LocalPort 1205 -State Listen | ForEach-Object { Stop-Proce
 
 **客户端操作：**
 1. 安装 ZeroTier，加入同一网络
-2. 油猴脚本 `serverUrl` 改为 ZeroTier IP（如 `172.30.0.171:1205`）
+2. 油猴脚本 `serverUrl` 改为 ZeroTier IP（如 `10.147.20.5:1205`）
 3. `@connect` 加上 ZeroTier IP
 
 > `allowed_clients` 已默认包含 `172.16.0.0/12`，覆盖 ZeroTier 网段。

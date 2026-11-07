@@ -25,7 +25,68 @@ if (Test-Path -LiteralPath $configPath) {
     } catch { }
 }
 
+# Get-NetTCPConnection costs ~950 ms per call on PowerShell 5.1, and this
+# script polls the port in a loop. GetExtendedTcpTable answers in under a
+# millisecond, which is what makes the 300 ms poll below cheap.
+$script:bgTcpHelper = $false
+try {
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+
+public static class OcrTcpBg {
+    [DllImport("iphlpapi.dll", SetLastError = true)]
+    static extern uint GetExtendedTcpTable(IntPtr buf, ref int size, bool order, int af, int cls, uint reserved);
+    const int AF_INET = 2;
+    const int TCP_TABLE_OWNER_PID_LISTENER = 3;
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct MIB_TCPROW_OWNER_PID {
+        public uint state;
+        public uint localAddr;
+        public uint localPort;
+        public uint remoteAddr;
+        public uint remotePort;
+        public uint owningPid;
+    }
+
+    public static int ListenerPid(int port) {
+        int size = 0;
+        uint rc = GetExtendedTcpTable(IntPtr.Zero, ref size, false, AF_INET, TCP_TABLE_OWNER_PID_LISTENER, 0);
+        if (rc != 0 && rc != 122) { return 0; }
+        IntPtr buf = Marshal.AllocHGlobal(size);
+        try {
+            rc = GetExtendedTcpTable(buf, ref size, false, AF_INET, TCP_TABLE_OWNER_PID_LISTENER, 0);
+            if (rc != 0) { return 0; }
+            int rows = Marshal.ReadInt32(buf);
+            IntPtr cur = (IntPtr)((long)buf + 4);
+            int rowSize = Marshal.SizeOf(typeof(MIB_TCPROW_OWNER_PID));
+            for (int i = 0; i < rows; i++) {
+                var row = (MIB_TCPROW_OWNER_PID)Marshal.PtrToStructure(cur, typeof(MIB_TCPROW_OWNER_PID));
+                int p = (int)(((row.localPort & 0xFF) << 8) | ((row.localPort & 0xFF00) >> 8));
+                if (p == port) { return (int)row.owningPid; }
+                cur = (IntPtr)((long)cur + rowSize);
+            }
+            return 0;
+        } finally {
+            Marshal.FreeHGlobal(buf);
+        }
+    }
+}
+"@ -ErrorAction Stop
+    $script:bgTcpHelper = $true
+} catch {
+    $script:bgTcpHelper = $false
+}
+
 function Get-ListenerPid([int]$p) {
+    if ($script:bgTcpHelper) {
+        try {
+            $owner = [OcrTcpBg]::ListenerPid($p)
+            if ($owner -gt 0) { return [int]$owner }
+            return 0
+        } catch { }
+    }
     try {
         $c = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue |
             Select-Object -First 1
@@ -90,12 +151,23 @@ Start-Process -FilePath $python -ArgumentList @(
   -RedirectStandardError $logErr `
   -WindowStyle Hidden
 
-Start-Sleep -Seconds 5
-$pid0 = Get-ListenerPid $port
+# Poll for the listening socket instead of sleeping a flat 5 s. uvicorn binds
+# the port within a second or two; waiting the full period made every start
+# feel longer for no reason. 20 s is the ceiling for a cold ONNX load.
+$pid0 = 0
+for ($i = 0; $i -lt 66; $i++) {
+    $pid0 = Get-ListenerPid $port
+    if ($pid0 -gt 0) { break }
+    Start-Sleep -Milliseconds 300
+}
 if ($pid0 -gt 0) {
     Write-Host ("Service started on port {0} (PID {1})." -f $port, $pid0) -ForegroundColor Green
     exit 0
 }
 
 Write-Host "[ERROR] Service did not start; check server.err.log." -ForegroundColor Red
+if (Test-Path -LiteralPath $logErr) {
+    Write-Host ""
+    Get-Content -LiteralPath $logErr -Tail 12 | ForEach-Object { Write-Host ("  " + $_) }
+}
 exit 1

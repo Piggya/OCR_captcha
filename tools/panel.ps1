@@ -30,6 +30,33 @@ $startBat = Join-Path $root "launchers\Start-OCR.bat"
 $errLog = Join-Path $root "server.err.log"
 $taskName = "OCR 服务自启"
 
+# ---------------------------------------------------------- single instance --
+# Only one control panel may run at a time. Without this, every double-click
+# left another elevated powershell process behind - and those cannot be killed
+# from a normal-privilege shell, so they pile up and hold the port. A named
+# mutex is the reliable Windows-wide check; held for the life of the process.
+if (-not $SelfTest) {
+    $script:singleInstanceMutex = New-Object System.Threading.Mutex($false, "Global\OcrControlPanel")
+    $script:ownsMutex = $false
+    try {
+        $script:ownsMutex = $script:singleInstanceMutex.WaitOne(0)
+    } catch [System.Threading.AbandonedMutexException] {
+        # Previous holder crashed without releasing; we inherit ownership.
+        $script:ownsMutex = $true
+    }
+
+    if (-not $script:ownsMutex) {
+        # Bring the existing window forward instead of silently doing nothing.
+        try {
+            Add-Type -AssemblyName Microsoft.VisualBasic
+            [Microsoft.VisualBasic.Interaction]::AppActivate("OCR 控制面板") | Out-Null
+        } catch { }
+        try { $script:singleInstanceMutex.Dispose() } catch { }
+        $script:singleInstanceMutex = $null
+        return
+    }
+}
+
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -40,6 +67,12 @@ $script:version = "?"
 $script:token = ""
 $script:serverUrl = ""
 $script:userscriptUrl = ""
+$script:updateBusy = $false
+$script:updateRunner = $null
+$script:updateTimer = $null
+$script:updateProc = $null
+$script:updateTimerRun = $null
+$script:updateBarTimer = $null
 
 function Get-PrimaryLanIPv4 {
     # Mirrors tools\show_info.ps1 so the panel and Show-OCR-Info.bat never
@@ -78,6 +111,49 @@ function Get-PrimaryLanIPv4 {
     return "127.0.0.1"
 }
 
+function Test-LocalIPv4 {
+    <#
+        True when the given address is actually bound to one of this machine's
+        adapters. A stale work_lan_ip (the box got a new DHCP lease, or the
+        config was copied from another machine) made the panel advertise an
+        address nothing could reach, so it is verified before being trusted.
+
+        Routable addresses only. Loopback, link-local and 0.0.0.0 are bound
+        here too, but sending them to another device means "your own loopback"
+        or nothing at all, so they must fall back to probing.
+    #>
+    param([string]$Address)
+    if (-not $Address) { return $false }
+    $value = $Address.Trim()
+    $parsed = $null
+    if (-not [System.Net.IPAddress]::TryParse($value, [ref]$parsed)) { return $false }
+    if ([System.Net.IPAddress]::IsLoopback($parsed)) { return $false }
+    # 0.0.0.0 / :: are "unspecified": bindable, never reachable from elsewhere.
+    if ($parsed.Equals([System.Net.IPAddress]::Any)) { return $false }
+    if ($parsed.IsIPv6LinkLocal) { return $false }
+    if ($value -like "169.254.*") { return $false }   # IPv4 APIPA
+    try {
+        $hit = Get-NetIPAddress -IPAddress $value -AddressFamily IPv4 -ErrorAction Stop |
+            Select-Object -First 1
+        return [bool]$hit
+    } catch {
+        return $false
+    }
+}
+
+function Get-EffectiveLanIP {
+    <#
+        Resolves the address handed to LAN devices: the configured work_lan_ip
+        when it is genuinely present on this host, otherwise the probed one.
+    #>
+    param($Config)
+    $configured = ""
+    if ($Config) { $configured = [string]$Config.work_lan_ip }
+    $configured = $configured.Trim()
+    if ($configured -and (Test-LocalIPv4 $configured)) { return $configured }
+    return (Get-PrimaryLanIPv4)
+}
+
 function Read-Config {
     if (Test-Path -LiteralPath $configPath) {
         try {
@@ -87,7 +163,75 @@ function Read-Config {
     return $null
 }
 
+# Get-NetTCPConnection takes ~950 ms per call on PowerShell 5.1 (it walks the
+# whole TCP table through WMI). The panel polls this every 3 s and the
+# start/stop/restart paths poll it every 250 ms, so it dominated every action.
+# GetExtendedTcpTable answers in microseconds; fall back to the cmdlet only if
+# the P/Invoke is unavailable.
+$script:tcpHelper = $null
+try {
+    Add-Type -TypeDefinition @"
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Runtime.InteropServices;
+
+public static class OcrTcp {
+    [DllImport("iphlpapi.dll", SetLastError = true)]
+    static extern uint GetExtendedTcpTable(IntPtr buf, ref int size, bool order, int af, int cls, uint reserved);
+
+    const int AF_INET = 2;
+    const int TCP_TABLE_OWNER_PID_LISTENER = 3;
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct MIB_TCPROW_OWNER_PID {
+        public uint state;
+        public uint localAddr;
+        public uint localPort;
+        public uint remoteAddr;
+        public uint remotePort;
+        public uint owningPid;
+    }
+
+    // Returns the owning PID of a listening socket on the given port, or 0.
+    public static int ListenerPid(int port) {
+        int size = 0;
+        uint rc = GetExtendedTcpTable(IntPtr.Zero, ref size, false, AF_INET, TCP_TABLE_OWNER_PID_LISTENER, 0);
+        if (rc != 0 && rc != 122) { return 0; }   // 122 = ERROR_INSUFFICIENT_BUFFER
+        IntPtr buf = Marshal.AllocHGlobal(size);
+        try {
+            rc = GetExtendedTcpTable(buf, ref size, false, AF_INET, TCP_TABLE_OWNER_PID_LISTENER, 0);
+            if (rc != 0) { return 0; }
+            int rows = Marshal.ReadInt32(buf);
+            IntPtr cur = (IntPtr)((long)buf + 4);
+            int rowSize = Marshal.SizeOf(typeof(MIB_TCPROW_OWNER_PID));
+            for (int i = 0; i < rows; i++) {
+                var row = (MIB_TCPROW_OWNER_PID)Marshal.PtrToStructure(cur, typeof(MIB_TCPROW_OWNER_PID));
+                // localPort is big-endian in the low 16 bits.
+                int p = (int)((row.localPort & 0xFF) << 8 | (row.localPort & 0xFF00) >> 8);
+                if (p == port) { return (int)row.owningPid; }
+                cur = (IntPtr)((long)cur + rowSize);
+            }
+            return 0;
+        } finally {
+            Marshal.FreeHGlobal(buf);
+        }
+    }
+}
+"@ -ErrorAction Stop
+    $script:tcpHelper = $true
+} catch {
+    $script:tcpHelper = $false
+}
+
 function Get-ListenerPid([int]$p) {
+    if ($script:tcpHelper) {
+        try {
+            $owner = [OcrTcp]::ListenerPid($p)
+            if ($owner -gt 0) { return [int]$owner }
+            return 0
+        } catch { }
+    }
     try {
         $c = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue |
             Select-Object -First 1
@@ -135,8 +279,9 @@ function Set-ServiceStatus {
         if ($script:port -le 0) { $script:port = 1205 }
         $tok = [string]$cfg.api_token
         if ($tok -and $tok -ne "change-me-to-a-random-internal-token") { $script:token = $tok.Trim() }
-        $ip = [string]$cfg.work_lan_ip
-        if (-not [string]::IsNullOrWhiteSpace($ip)) { $script:lanIp = $ip.Trim() }
+        # work_lan_ip is only trusted when the address is really on this host;
+        # a stale value used to make every displayed URL unreachable.
+        $script:lanIp = Get-EffectiveLanIP $cfg
     }
     if (-not $script:lanIp) { $script:lanIp = Get-PrimaryLanIPv4 }
     $script:version = Get-AppVersion
@@ -319,7 +464,19 @@ $ui = $script:ui
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "OCR 控制面板"
-$form.ClientSize = New-Object System.Drawing.Size(860, 894)
+# The design needs 860x894, but 1366x768 laptops (and 125%/150% scaling) have
+# less working area than that, which pushed the bottom buttons off-screen.
+# Cap the height to the available desktop and let the form scroll instead.
+$designWidth = 860
+$designHeight = 894
+$workArea = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+$maxHeight = [Math]::Max(480, $workArea.Height - 60)
+$maxWidth = [Math]::Max(720, $workArea.Width - 40)
+$formWidth = [Math]::Min($designWidth, $maxWidth)
+$formHeight = [Math]::Min($designHeight, $maxHeight)
+$form.ClientSize = New-Object System.Drawing.Size($formWidth, $formHeight)
+$form.AutoScroll = $true
+$form.AutoScrollMinSize = New-Object System.Drawing.Size($designWidth, $designHeight)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
 $form.MaximizeBox = $false
@@ -529,41 +686,172 @@ $cardConn.Controls.Add($btnCopyAll)
 $cardConn.Height = 236
 
 # ------------------------------------------------------------- service card --
-function Start-OcrServiceFromPanel {
-    <#
-        Runs start_service_bg.ps1 and, when it refuses to start, surfaces the
-        actual reason in a dialog instead of leaving the user with a red dot.
+# ------------------------------------------------------ async service start --
+# Starting the service takes 10-18 s (probe the interpreter, boot uvicorn, load
+# the ONNX model). Running that on the UI thread froze the whole window: the
+# user could not move or click it and Windows painted "未响应". Everything below
+# runs the work on a background runspace and lets a WinForms timer pick the
+# result up, so the panel stays responsive and shows progress instead.
+$script:svcBusy = $false
+$script:svcPowerShell = $null
 
-        start_service_bg.ps1 exits 2 when the Python environment is unusable
-        (missing ddddocr etc.). The message it prints is the useful part, so it
-        is collected and shown verbatim.
+function New-ServiceRunner {
+    <#
+        Builds a closed runspace that can execute start_service_bg.ps1 without
+        touching the UI thread. Returns a hashtable carrying the runspace, the
+        async handle and the output pipe.
     #>
+    $ps = [powershell]::Create()
+    [void]$ps.AddCommand($startScript)
+    $script:svcPowerShell = $ps
+    return @{
+        PowerShell = $ps
+        Handle     = $ps.BeginInvoke()
+    }
+}
+
+function Set-ServiceBusy([bool]$busy, [string]$label) {
+    $script:svcBusy = $busy
+    $form.Tag.Start.Enabled = (-not $busy)
+    $form.Tag.Restart.Enabled = (-not $busy)
+    $form.Tag.Stop.Enabled = (-not $busy)
+    $form.Tag.Start.Text = $(if ($busy) { $label } else { "启动服务" })
+    $form.Tag.Restart.Text = $(if ($busy) { "处理中…" } else { "重启服务" })
+}
+
+function Complete-ServiceStart($runner) {
+    <#
+        Called from the UI timer once the background runspace finished. Collects
+        output, reports failures in a dialog and refreshes the status card.
+    #>
+    $ps = $runner.PowerShell
     $output = @()
     try {
-        $output = & powershell -NoProfile -ExecutionPolicy Bypass -File $startScript 2>&1
-        $code = $LASTEXITCODE
+        $output = @($ps.EndInvoke($runner.Handle) | ForEach-Object { [string]$_ })
+        foreach ($e in $ps.Streams.Error) { $output += [string]$e }
     } catch {
-        $code = 1
         $output = @($_.Exception.Message)
-    }
-    foreach ($line in $output) { Write-Log ([string]$line) }
-
-    if ($code -eq 2) {
-        $text = ($output | ForEach-Object { [string]$_ }) -join "`r`n"
-        $reason = ""
-        $idx = $text.IndexOf("Reason:")
-        if ($idx -ge 0) { $reason = $text.Substring($idx + 7).Trim() }
-        if (-not $reason) { $reason = $text.Trim() }
-        Show-Msg "服务无法启动：缺少 Python 依赖" $reason "Error"
-    } elseif ($code -ne 0) {
-        Show-Msg "服务启动失败" (
-            "启动脚本返回错误码 $code。详情见面板日志和 server.err.log。" + "`r`n`r`n" +
-            (($output | ForEach-Object { [string]$_ }) -join "`r`n")
-        ) "Error"
+    } finally {
+        $ps.Dispose()
+        $script:svcPowerShell = $null
     }
 
-    Start-Sleep -Milliseconds 800
+    foreach ($line in $output) { if ($line) { Write-Log $line } }
+
+    $text = ($output | Where-Object { $_ }) -join "`r`n"
+    # start_service_bg.ps1 spells out the failure in plain English; the exit
+    # code does not survive AddCommand, so the text is the source of truth.
+    if ($text -match "(?s)Reason:\s*(.+)$") {
+        Show-Msg "服务无法启动：缺少 Python 依赖" ($matches[1].Trim()) "Error"
+    } elseif ($text -match "\[ERROR\]") {
+        Show-Msg "服务启动失败" ("启动脚本返回错误。详情见面板日志和 server.err.log。" + "`r`n`r`n" + $text) "Error"
+    }
+
+    Set-ServiceBusy $false ""
     Update-Status
+}
+
+function Start-OcrServiceFromPanel {
+    <#
+        Kicks off start_service_bg.ps1 in the background and returns at once.
+        The caller's button shows "启动中…" until the polling timer reports back.
+
+        -AfterStop is used by the restart path: the caller has already stopped
+        the old process and set $script:svcBusy, so the guard below must not
+        reject the call and the busy label reads "重启中…" instead.
+    #>
+    param([switch]$AfterStop)
+
+    if ($script:svcBusy -and -not $AfterStop) { return }
+    Set-ServiceBusy $true $(if ($AfterStop) { "重启中…" } else { "启动中…" })
+    Write-Log $(if ($AfterStop) { "重新启动服务 ..." } else { "启动服务 ..." })
+    try {
+        $script:svcRunner = New-ServiceRunner
+    } catch {
+        Set-ServiceBusy $false ""
+        Write-Log ("启动失败：" + $_.Exception.Message)
+        Show-Msg "服务启动失败" $_.Exception.Message "Error"
+        return
+    }
+    $script:svcTimer = New-Object System.Windows.Forms.Timer
+    $script:svcTimer.Interval = 400
+    $script:svcRunnerRef = $script:svcRunner
+    $script:svcTimer.Add_Tick({
+        try {
+            $r = $script:svcRunnerRef
+            if (-not $r) { $script:svcTimer.Stop(); return }
+            if ($r.Handle.IsCompleted) {
+                $script:svcTimer.Stop()
+                $script:svcTimer.Dispose()
+                $script:svcTimer = $null
+                Complete-ServiceStart $r
+                $script:svcRunnerRef = $null
+            } else {
+                # Keep the state chip honest while uvicorn boots.
+                try { Update-Status } catch { }
+            }
+        } catch {
+            $script:svcTimer.Stop()
+            Set-ServiceBusy $false ""
+            Write-Log ("启动轮询失败：" + $_.Exception.Message)
+        }
+    })
+    $script:svcTimer.Start()
+}
+
+function Stop-OcrServiceFromPanel {
+    <#
+        Stop-Process returns immediately, but the killed process can keep the
+        listening socket for several seconds while Windows tears down its
+        memory (uvicorn + onnxruntime hold ~300 MB). The button is marked busy
+        and a timer polls the port until it is really gone, so the panel never
+        reports "stopped" while the old process is still answering.
+    #>
+    if ($script:svcBusy) { return }
+    $pid0 = Get-ListenerPid $script:port
+    if ($pid0 -le 0) {
+        Write-Log "服务本来就没在运行"
+        Update-Status
+        return
+    }
+
+    Set-ServiceBusy $true "停止中…"
+    try {
+        Stop-Process -Id $pid0 -Force -ErrorAction SilentlyContinue
+        Write-Log "正在停止服务 (PID $pid0) ..."
+    } catch {
+        Write-Log ("停止失败：" + $_.Exception.Message)
+    }
+
+    $script:stopTimer = New-Object System.Windows.Forms.Timer
+    $script:stopTimer.Interval = 250
+    $script:stopTimer.Add_Tick({
+        $script:stopTimer.Stop()
+        $p = Get-ListenerPid $script:port
+        if ($p -le 0) {
+            $script:stopTimer.Dispose()
+            $script:stopTimer = $null
+            Write-Log "服务已停止"
+            Set-ServiceBusy $false ""
+            Update-Status
+            return
+        }
+        # Give up after ~20 s: the port may be held by a process this user
+        # cannot kill, in which case saying "still running" is the honest answer.
+        $script:stopTicks = [int]$script:stopTicks + 1
+        if ($script:stopTicks -ge 80) {
+            $script:stopTimer.Stop()
+            $script:stopTimer.Dispose()
+            $script:stopTimer = $null
+            Write-Log ("停止超时：端口 $($script:port) 仍被 PID $p 占用（可能需要管理员权限）")
+            Set-ServiceBusy $false ""
+            Update-Status
+            return
+        }
+        $script:stopTimer.Start()
+    })
+    $script:stopTicks = 0
+    $script:stopTimer.Start()
 }
 
 
@@ -574,7 +862,6 @@ $form.Controls.Add($cardSvc)
 $btnStart = New-StyleButton -Text "启动服务" -Width 130 -Height 40 -Variant "accent"
     $btnStart.Location = New-Object System.Drawing.Point(18, 40)
     $btnStart.Add_Click({
-        Write-Log "启动服务 ..."
         Start-OcrServiceFromPanel
     })
 $cardSvc.Controls.Add($btnStart)
@@ -582,28 +869,54 @@ $cardSvc.Controls.Add($btnStart)
 $btnStop = New-StyleButton -Text "停止服务" -Width 130 -Height 40 -Variant "danger"
 $btnStop.Location = New-Object System.Drawing.Point(160, 40)
 $btnStop.Add_Click({
-    $pid0 = Get-ListenerPid $script:port
-    if ($pid0 -gt 0) {
-        Stop-Process -Id $pid0 -Force -ErrorAction SilentlyContinue
-        Write-Log "已停止服务 (PID $pid0)"
-    } else {
-        Write-Log "服务本来就没在运行"
-    }
-    Start-Sleep -Milliseconds 800
-    Update-Status
+    Stop-OcrServiceFromPanel
 })
 $cardSvc.Controls.Add($btnStop)
 
 $btnRestart = New-StyleButton -Text "重启服务" -Width 130 -Height 40
     $btnRestart.Location = New-Object System.Drawing.Point(302, 40)
     $btnRestart.Add_Click({
+        if ($script:svcBusy) { return }
         $pid0 = Get-ListenerPid $script:port
-        if ($pid0 -gt 0) {
-            Stop-Process -Id $pid0 -Force -ErrorAction SilentlyContinue
-            Write-Log "已停止服务 (PID $pid0)"
-            Start-Sleep -Seconds 2
+        if ($pid0 -le 0) {
+            # Nothing running: a restart is just a start.
+            Start-OcrServiceFromPanel
+            return
         }
-        Start-OcrServiceFromPanel
+
+        Set-ServiceBusy $true "重启中…"
+        try {
+            Stop-Process -Id $pid0 -Force -ErrorAction SilentlyContinue
+            Write-Log "正在重启服务 (旧 PID $pid0) ..."
+        } catch {
+            Write-Log ("停止失败：" + $_.Exception.Message)
+        }
+
+        # Wait for the port to actually be released before starting again.
+        # Starting too early makes the new uvicorn fail with "address in use".
+        $script:restartTicks = 0
+        $script:restartTimer = New-Object System.Windows.Forms.Timer
+        $script:restartTimer.Interval = 250
+        $script:restartTimer.Add_Tick({
+            $p = Get-ListenerPid $script:port
+            if ($p -le 0) {
+                $script:restartTimer.Stop()
+                $script:restartTimer.Dispose()
+                $script:restartTimer = $null
+                Start-OcrServiceFromPanel -AfterStop
+                return
+            }
+            $script:restartTicks = [int]$script:restartTicks + 1
+            if ($script:restartTicks -ge 80) {
+                $script:restartTimer.Stop()
+                $script:restartTimer.Dispose()
+                $script:restartTimer = $null
+                Write-Log ("重启失败：端口 $($script:port) 仍被 PID $p 占用（可能需要管理员权限）")
+                Set-ServiceBusy $false ""
+                Update-Status
+            }
+        })
+        $script:restartTimer.Start()
     })
 $cardSvc.Controls.Add($btnRestart)
 
@@ -718,120 +1031,165 @@ function Get-OnlineVersion {
 }
 
 $btnUpdate.Add_Click({
+    if ($script:updateBusy) { return }
+    $script:updateBusy = $true
     $localVer = [string]$script:version
     Set-UpdateUi -Text "正在连接 GitHub 检查最新版本…" -Busy $true
     Write-Log "检查更新：当前版本 $localVer"
 
-    $online = Get-OnlineVersion
-    if (-not $online) {
-        Set-UpdateUi -Text "检查失败：连不上 GitHub（可点按钮重试或手动更新）" -Color $script:ui.Red
-        Write-Log "检查更新失败：无法读取线上版本（网络或代理问题）"
-        Show-Msg "OCR 控制面板" ("连不上 GitHub，无法检查更新。`r`n`r`n" +
-            "可以：`r`n" +
-            "1. 确认本机能访问 github.com（或开代理）后重试；`r`n" +
-            "2. 或者到另一台机器下载 main.zip，`r`n" +
-            "   再运行 launchers\Update-OCR.bat 手动离线更新。") "Warning"
-        return
-    }
-
-    if ($online -eq $localVer) {
-        Set-UpdateUi -Text ("已是最新版本 " + $localVer + "，无需更新") -Color $script:ui.Green
-        Write-Log "已是最新版本：$localVer"
-        Show-Msg "OCR 控制面板" ("当前已经是最新版本（" + $localVer + "），不需要更新。") "Information"
-        return
-    }
-
+    # The version probe hits GitHub over the network and can block for tens of
+    # seconds when the network is down. Running it on the UI thread froze the
+    # whole window (same trap that start_service_bg.ps1 had), so it goes to a
+    # background runspace and a timer picks the answer up.
+    #
+    # A fresh runspace has none of this script's functions in scope, so
+    # AddCommand("Get-OnlineVersion") fails there with "not recognized".
+    # Send the definition plus the call instead.
+    $runner = $null
     try {
-        $isNewer = ([version]$online) -gt ([version]$localVer)
+        $ps = [powershell]::Create()
+        $scriptText = "function Get-OnlineVersion {`n" +
+            (Get-Command Get-OnlineVersion -CommandType Function).Definition +
+            "`n}`nGet-OnlineVersion"
+        [void]$ps.AddScript($scriptText)
+        $runner = @{ PowerShell = $ps; Handle = $ps.BeginInvoke() }
     } catch {
-        $isNewer = ($online -ne $localVer)
-    }
-    if (-not $isNewer) {
-        Set-UpdateUi -Text ("本地版本 " + $localVer + " 比线上 " + $online + " 新，跳过更新") -Color $script:ui.TextMuted
-        Write-Log "本地 $localVer 比线上 $online 新，不降级"
-        Show-Msg "OCR 控制面板" ("线上最新是 " + $online + "，本地是 " + $localVer + "（更旧/相同），不执行更新。") "Information"
+        $script:updateBusy = $false
+        Set-UpdateUi -Text "检查失败：无法启动检查任务" -Color $script:ui.Red
+        Write-Log ("检查更新失败：" + $_.Exception.Message)
         return
     }
+    $script:updateRunner = $runner
 
-    $ans = [System.Windows.Forms.MessageBox]::Show(
-        ("发现新版本：" + $localVer + " → " + $online + "`r`n`r`n" +
-         "更新会：`r`n" +
-         "  1. 停止当前服务`r`n" +
-         "  2. 备份 server\config.json`r`n" +
-         "  3. 覆盖代码并重启服务`r`n`r`n" +
-         "python\ 和 token 都会保留。现在更新吗？"),
-        "OCR 控制面板",
-        [System.Windows.Forms.MessageBoxButtons]::YesNo,
-        [System.Windows.Forms.MessageBoxIcon]::Question)
-    if ($ans -ne [System.Windows.Forms.DialogResult]::Yes) {
-        Set-UpdateUi -Text ("发现新版本 " + $online + "，已取消更新") -Color $script:ui.TextMuted
-        return
-    }
+    $script:updateTimer = New-Object System.Windows.Forms.Timer
+    $script:updateTimer.Interval = 300
+    $script:updateTimer.Add_Tick({
+        $r = $script:updateRunner
+        if (-not $r) { $script:updateTimer.Stop(); return }
+        if (-not $r.Handle.IsCompleted) { return }
 
-    Set-UpdateUi -Text ("正在更新到 " + $online + "，请稍候（可能需要几分钟）…") -Busy $true
-    Write-Log "开始更新：$localVer -> $online"
+        $script:updateTimer.Stop()
+        $script:updateTimer.Dispose()
+        $script:updateTimer = $null
+        $script:updateRunner = $null
 
-    $script:updateBaseText = "正在更新到 " + $online + "，请稍候"
-    $barTimer = New-Object System.Windows.Forms.Timer
-    $barTimer.Interval = 400
-    $barTimer.Add_Tick({
-        [System.Windows.Forms.Application]::DoEvents()
-        if ($script:lblUpdateState.Text.Length -gt 80) {
-            $script:lblUpdateState.Text = $script:updateBaseText
+        $online = ""
+        try {
+            $out = @($r.PowerShell.EndInvoke($r.Handle))
+            if ($out.Count -gt 0) { $online = [string]$out[-1] }
+        } catch {
+            Write-Log ("检查更新失败：" + $_.Exception.Message)
+        } finally {
+            try { $r.PowerShell.Dispose() } catch { }
         }
-        $script:lblUpdateState.Text = $script:lblUpdateState.Text + " ."
-    })
-    $barTimer.Start()
+        $script:updateBusy = $false
 
-    $exit = -1
-    try {
+        if (-not $online) {
+            Set-UpdateUi -Text "检查失败：连不上 GitHub（可点按钮重试或手动更新）" -Color $script:ui.Red
+            Write-Log "检查更新失败：无法读取线上版本（网络或代理问题）"
+            Show-Msg "OCR 控制面板" ("连不上 GitHub，无法检查更新。`r`n`r`n" +
+                "可以：`r`n" +
+                "1. 确认本机能访问 github.com（或开代理）后重试；`r`n" +
+                "2. 或者到另一台机器下载 main.zip，`r`n" +
+                "   再运行 launchers\Update-OCR.bat 手动离线更新。") "Warning"
+            return
+        }
+
+        if ($online -eq $localVer) {
+            Set-UpdateUi -Text ("已是最新版本 " + $localVer + "，无需更新") -Color $script:ui.Green
+            Write-Log "已是最新版本：$localVer"
+            Show-Msg "OCR 控制面板" ("当前已经是最新版本（" + $localVer + "），不需要更新。") "Information"
+            return
+        }
+
+        try {
+            $isNewer = ([version]$online) -gt ([version]$localVer)
+        } catch {
+            $isNewer = ($online -ne $localVer)
+        }
+        if (-not $isNewer) {
+            Set-UpdateUi -Text ("本地版本 " + $localVer + " 比线上 " + $online + " 新，跳过更新") -Color $script:ui.TextMuted
+            Write-Log "本地 $localVer 比线上 $online 新，不降级"
+            Show-Msg "OCR 控制面板" ("线上最新是 " + $online + "，本地是 " + $localVer + "（更旧/相同），不执行更新。") "Information"
+            return
+        }
+
+        $ans = [System.Windows.Forms.MessageBox]::Show(
+            ("发现新版本：" + $localVer + " → " + $online + "`r`n`r`n" +
+             "更新会：`r`n" +
+             "  1. 停止当前服务`r`n" +
+             "  2. 备份 server\config.json`r`n" +
+             "  3. 覆盖代码并重启服务`r`n`r`n" +
+             "python\ 和 token 都会保留。现在更新吗？"),
+            "OCR 控制面板",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Question)
+        if ($ans -ne [System.Windows.Forms.DialogResult]::Yes) {
+            Set-UpdateUi -Text ("发现新版本 " + $online + "，已取消更新") -Color $script:ui.TextMuted
+            return
+        }
+
+        Set-UpdateUi -Text ("正在更新到 " + $online + "，请稍候（可能需要几分钟）…") -Busy $true
+        Write-Log "开始更新：$localVer -> $online"
+
+        $script:updateBaseText = "正在更新到 " + $online + "，请稍候"
+        $barTimer = New-Object System.Windows.Forms.Timer
+        $barTimer.Interval = 400
+        $barTimer.Add_Tick({
+            [System.Windows.Forms.Application]::DoEvents()
+            if ($script:lblUpdateState.Text.Length -gt 80) {
+                $script:lblUpdateState.Text = $script:updateBaseText
+            }
+            $script:lblUpdateState.Text = $script:lblUpdateState.Text + " ."
+        })
+        $barTimer.Start()
+        $script:updateBarTimer = $barTimer
+
+        $script:updateTimerRun = New-Object System.Windows.Forms.Timer
+        $script:updateTimerRun.Interval = 300
+        $script:updateTimerRun.Add_Tick({
+            if (-not $script:updateProc) { return }
+            if ($script:updateProc.HasExited) {
+                $script:updateTimerRun.Stop()
+                $script:updateTimerRun.Dispose()
+                $script:updateTimerRun = $null
+                if ($script:updateBarTimer) { $script:updateBarTimer.Stop(); $script:updateBarTimer.Dispose(); $script:updateBarTimer = $null }
+                $code = 0
+                try { $code = $script:updateProc.ExitCode } catch { }
+                $script:updateProc = $null
+                $script:updateBusy = $false
+                if ($code -eq 0) {
+                    Set-UpdateUi -Text ("已更新到 " + $online + "，正在重启服务…") -Color $script:ui.Green
+                    Write-Log ("更新完成：" + $online)
+                } else {
+                    Set-UpdateUi -Text ("更新失败（退出码 " + $code + "），详见日志") -Color $script:ui.Red
+                    Write-Log ("更新失败：退出码 " + $code)
+                }
+                Update-Status
+            }
+        })
+
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = "powershell.exe"
         $psi.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $updateScriptRef + '"'
-        $psi.WorkingDirectory = $rootRef
         $psi.UseShellExecute = $false
+        $psi.CreateNoWindow = $true
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
-        $psi.CreateNoWindow = $true
-        $proc = [System.Diagnostics.Process]::Start($psi)
-        while ($true) {
-            $line = $proc.StandardOutput.ReadLine()
-            if ($line -eq $null) { break }
-            if ($line) {
-                Write-Log $line
-                if ($line -match '^\[PROGRESS\]\s*(\d+)\|(.+)$') {
-                    $pct = [int]$Matches[1]
-                    $step = $Matches[2].Trim()
-                    Set-UpdateProgress $pct
-                    $script:lblUpdateState.Text = "更新中 $pct% · " + $step
-                    $script:updateBaseText = $script:lblUpdateState.Text
-                }
-            }
+        $psi.WorkingDirectory = $rootRef
+        try {
+            $script:updateProc = [System.Diagnostics.Process]::Start($psi)
+            $script:updateTimerRun.Start()
+        } catch {
+            if ($script:updateBarTimer) { $script:updateBarTimer.Stop(); $script:updateBarTimer.Dispose(); $script:updateBarTimer = $null }
+            $script:updateBusy = $false
+            Set-UpdateUi -Text ("更新失败：" + $_.Exception.Message) -Color $script:ui.Red
+            Write-Log ("更新失败：" + $_.Exception.Message)
         }
-        $err = $proc.StandardError.ReadToEnd()
-        if ($err.Trim()) { Write-Log ("[stderr] " + $err.Trim()) }
-        $proc.WaitForExit()
-        $exit = $proc.ExitCode
-    } catch {
-        Write-Log ("更新进程启动失败：" + $_.Exception.Message)
-    } finally {
-        $barTimer.Stop()
-        $barTimer.Dispose()
-    }
-
-    Start-Sleep -Milliseconds 400
-    try { Update-Status } catch { }
-    if ($exit -eq 0) {
-        Set-UpdateUi -Text ("更新完成：" + $localVer + " → " + $online) -Color $script:ui.Green -Done
-        Write-Log "更新完成：$localVer -> $online"
-        Show-Msg "OCR 控制面板" ("更新完成：" + $localVer + " → " + $online + "`r`n`r`n服务已重启，局域网设备可以正常识别。") "Information"
-    } else {
-        Set-UpdateUi -Text "更新失败，请查看下方日志" -Color $script:ui.Red
-        Write-Log "更新失败（退出码 $exit），config.json 已备份"
-        Show-Msg "OCR 控制面板" ("更新失败（退出码 " + $exit + "）。`r`n`r`n" +
-            "服务已尝试恢复，配置有备份。`r`n详见面板下方日志和 backup-* 文件夹。") "Error"
-    }
+    })
+    $script:updateTimer.Start()
 })
+
 $cardSvc.Controls.Add($btnUpdate)
 
 $chkAuto = New-Object System.Windows.Forms.CheckBox
@@ -901,6 +1259,11 @@ $form.Tag = @{
     Server      = $txtServer
     Token       = $txtToken
     Auto        = $chkAuto
+    # Service buttons: the background start/restart flow disables and relabels
+    # them, so it needs them reachable from function scope.
+    Start       = $btnStart
+    Restart     = $btnRestart
+    Stop        = $btnStop
 }
 
 function Update-Status {    # NOTE: a PowerShell function has its own scope and cannot see script-level
@@ -955,20 +1318,55 @@ $timer.Add_Tick({ try { Update-Status } catch { Write-Log ("状态刷新失败�
 $form.Add_Shown({
     try { Update-Status } catch { Write-Log ("状态刷新失败：" + $_.Exception.Message) }
     Refresh-LogTail
-    $chkAuto.Checked = Test-AutoStartTask
+    try { $chkAuto.Checked = Test-AutoStartTask } catch { }
     $timer.Start()
     # Keep the desktop/root launcher shortcut present. It is cheap to rewrite
-    # and makes the entry point keep its logo after an update or a move.
-    try {
-        $mkShortcut = Join-Path $root "tools\make_shortcut.ps1"
-        if (Test-Path -LiteralPath $mkShortcut) {
-            & powershell -NoProfile -ExecutionPolicy Bypass -File $mkShortcut -TargetRoot $root -Quiet | Out-Null
-        }
-    } catch { }
+    # and makes the entry point keep its logo after an update or a move. Run it
+    # on a short timer instead of inline: spawning powershell from Add_Shown
+    # stalls the first paint of the window.
+    $mkShortcut = Join-Path $root "tools\make_shortcut.ps1"
+    if (Test-Path -LiteralPath $mkShortcut) {
+        $script:shortcutScript = $mkShortcut
+        $script:shortcutRoot = $root
+        $script:shortcutTimer = New-Object System.Windows.Forms.Timer
+        $script:shortcutTimer.Interval = 800
+        $script:shortcutTimer.Add_Tick({
+            $script:shortcutTimer.Stop()
+            $script:shortcutTimer.Dispose()
+            $script:shortcutTimer = $null
+            try {
+                Start-Process -FilePath "powershell.exe" -WindowStyle Hidden -ArgumentList @(
+                    '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script:shortcutScript,
+                    '-TargetRoot', $script:shortcutRoot, '-Quiet'
+                ) | Out-Null
+            } catch { }
+        })
+        $script:shortcutTimer.Start()
+    }
 })
 $form.Add_FormClosing({
     $timer.Stop()
     $script:flashTimer.Stop()
+    foreach ($t in @($script:svcTimer, $script:restartTimer, $script:stopTimer, $script:shortcutTimer, $script:updateTimer, $script:updateTimerRun, $script:updateBarTimer)) {
+        if ($t) { try { $t.Stop(); $t.Dispose() } catch { } }
+    }
+    if ($script:updateRunner) {
+        try { $script:updateRunner.PowerShell.Stop() } catch { }
+        try { $script:updateRunner.PowerShell.Dispose() } catch { }
+        $script:updateRunner = $null
+    }
+    if ($script:svcPowerShell) {
+        try { $script:svcPowerShell.Stop() } catch { }
+        try { $script:svcPowerShell.Dispose() } catch { }
+        $script:svcPowerShell = $null
+    }
+    # Release the single-instance lock so the next launch is not refused.
+    if ($script:singleInstanceMutex) {
+        try { if ($script:ownsMutex) { $script:singleInstanceMutex.ReleaseMutex() } } catch { }
+        try { $script:singleInstanceMutex.Dispose() } catch { }
+        $script:singleInstanceMutex = $null
+        $script:ownsMutex = $false
+    }
 })
 
 [void]$form.ShowDialog()
