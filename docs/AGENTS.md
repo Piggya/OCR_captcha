@@ -102,7 +102,7 @@ tools/           部署、构建、测试、基准、mock 工具
 docs/            全部文档：README-zh、AGENTS、PUBLISH、DEPLOY、CHANGELOG、GREASYFORK、PANEL
 launchers/       面向用户的 .bat 入口
 assets/          logo.png（图标源）、ocr-logo.png（原图）、icon.png、ocr-panel.ico
-.github/         （可选）CI 配置
+.github/         CI 配置 + README.md（GitHub 首页导航页）
 
 OCR-Panel.bat    根目录唯一入口（首次运行会自动生成带 Logo 的快捷方式）
 README-FIRST.txt 便携版说明（面向用户，排在 OCR-Panel.bat 之后）
@@ -114,6 +114,11 @@ requirements.txt 依赖清单
 根目录**不再**放以下文件（已迁入 `docs\`）：
 `README.md` / `AGENTS.md` / `PUBLISH.md` → `docs\` 下的对应文件
 （中文说明统一在 `docs/README-zh.md`，**不再保留 `docs/README.md`** 这份重复副本）。
+
+`.github/README.md` 是 **GitHub 首页导航页**：GitHub 只渲染根目录 / `.github/` / `docs/` 下的
+`README.md`，而本项目正文放在 `docs/README-zh.md`。该页**只写简介 + 文档索引，不复制正文**，
+避免出现两份需要同步维护的说明。**改它时注意**：相对链接要相对 `.github/` 解析，
+指向文档一律写 `../docs/xxx.md`，写成立 `docs/xxx.md` 会 404。
 
 `docs/` 目录说明：
 
