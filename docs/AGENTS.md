@@ -112,14 +112,14 @@ requirements.txt 依赖清单
 ```
 
 根目录**不再**放以下文件（已迁入 `docs\`）：
-`README.md` → `docs/README-zh.md`、`AGENTS.md` → `docs/AGENTS.md`、
-`PUBLISH.md` → `docs/PUBLISH.md`。
+`README.md` / `AGENTS.md` / `PUBLISH.md` → `docs\` 下的对应文件
+（中文说明统一在 `docs/README-zh.md`，**不再保留 `docs/README.md`** 这份重复副本）。
 
 `docs/` 目录说明：
 
 | 文件 | 用途 |
 |---|---|
-| `README-zh.md` | 项目完整说明（中文），含标题里的 `vX.Y.Z` |
+| `README-zh.md` | 项目完整说明（中文），标题**不带**版本号 |
 | `AGENTS.md` | 本文件，AI Agent 交接手册 |
 | `PUBLISH.md` | 发布流程说明 |
 | `DEPLOY.md` | 部署细节 |
@@ -147,7 +147,8 @@ requirements.txt 依赖清单
    `userscript/local-captcha-autofill.user.js` 的 `// @version`，两者必须一致。
 2. 每次更新在 `docs/CHANGELOG.md` 顶部新增 `## X.Y.Z (YYYY-MM-DD)`，
    并在油猴脚本头部 `// CHANGELOG` 加一行摘要。
-3. 版本号变更时同步更新 `docs/README-zh.md` 标题里的 `vX.Y.Z`。
+3. `docs/README-zh.md` 标题**不带版本号**（`# 土著内网验证码识别`）。版本号只维护在上述两处
+   与 CHANGELOG，不要往 README 标题里塞 `vX.Y.Z`。
 4. **不提交任何密钥、真实 token、真实局域网 IP、账号、本机代理地址。**
 5. 只推送 `main`。不要推送其它分支。
 6. `.ps1` 保持 UTF-8 **BOM**（PowerShell 5.1 需要）。
@@ -227,14 +228,13 @@ uvicorn 必须在仓库根目录运行；`restart_server.ps1` 已处理工作目
 
 - `server/app.py`：`__version__ = "X.Y.Z"`
 - `userscript/local-captcha-autofill.user.js`：`// @version      X.Y.Z`
-- `docs/README-zh.md`：标题 `# 土著内网验证码识别 vX.Y.Z`
 - `docs/CHANGELOG.md`：顶部新增一节
 - 油猴头部 `// CHANGELOG (see docs/README-zh.md):` 下新增一行摘要
 
 检索旧版本号确认没漏改：
 
 ```powershell
-Select-String -Path server\app.py,userscript\local-captcha-autofill.user.js,docs\README-zh.md,docs\CHANGELOG.md -Pattern '0\.9\.1'
+Select-String -Path server\app.py,userscript\local-captcha-autofill.user.js,docs\CHANGELOG.md -Pattern '0\.9\.1'
 ```
 
 CHANGELOG 格式：
@@ -533,7 +533,7 @@ Target=`wscript.exe //nologo tools\panel_launch.vbs`；后备 `OCR-Panel.bat`（
 ## 12. Definition of Done
 
 1. 代码改完，行为符合需求
-2. 版本号两处一致，`docs/README-zh.md` 标题已更新
+2. 版本号两处一致（`server/app.py` 与油猴 `@version`）
 3. `docs/CHANGELOG.md` 与油猴头部 CHANGELOG 已更新
 4. 第 8 节全部通过
 5. **第 9 节清理清单全部满足**

@@ -165,7 +165,7 @@ Get-NetTCPConnection -LocalPort 1205 -State Listen | ForEach-Object { Stop-Proce
 
 ## 跨网络部署（ZeroTier）
 
-如果新设备和这些设备不在同一局域网（如不同网段、分公司、家里），需要使用局域网穿透工具。
+如果新设备和这些设备不在同一局域网（如不同网段、其他办公地点、家里），需要使用局域网穿透工具。
 
 **服务端操作：**
 1. 安装 ZeroTier，加入网络
